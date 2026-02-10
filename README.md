@@ -1,6 +1,6 @@
 # Providence — Network Security Intelligence Platform
 
-> *Foresight. Detection. Protection.*
+> *Per Providentiam, Securitas*
 
 Providence is a multi-component network security platform providing real-time intrusion detection, attack classification, automated response, and adversarial AI detection.
 
