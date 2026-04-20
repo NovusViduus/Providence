@@ -101,6 +101,26 @@ for hp in HONEYPOTS:
         if not newsize.isdigit():
             continue
 
+        # If file was truncated/rotated, reset offset
+        if int(newsize) < offset:
+            print(f"{hp}: eye.log truncated ({newsize} < {offset}), resetting offset")
+            offset = 0
+            # Re-fetch from beginning
+            try:
+                r = subprocess.run(
+                    ["ssh", "-i", KEY, "-p", "62222",
+                     "-o", "ConnectTimeout=10",
+                     "-o", "StrictHostKeyChecking=no",
+                     "-o", "BatchMode=yes",
+                     f"ubuntu@{hp}",
+                     f"wc -c < ~/eye.log; tail -c +1 ~/eye.log 2>/dev/null | head -c 500000"],
+                    capture_output=True, text=True, timeout=30
+                )
+                lines = r.stdout.strip().split("\n")
+                newsize = lines[0].strip()
+            except Exception:
+                continue
+
         classify = [l for l in lines[1:] if "[CLASSIFY]" in l]
     except Exception as e:
         print(f"SSH ERROR {hp}: {e}")
