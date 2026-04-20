@@ -1,7 +1,9 @@
 package com.providence.citadel.service;
 
+import com.providence.citadel.model.IncidentReport;
 import com.providence.citadel.model.SecurityEvent;
 import com.providence.citadel.repository.EventRepository;
+import com.providence.citadel.repository.IncidentRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,14 +18,21 @@ import java.util.UUID;
 public class EventService {
 
     private final EventRepository eventRepository;
+    private final IncidentRepository incidentRepository;
 
-    public EventService(EventRepository eventRepository) {
+    public EventService(EventRepository eventRepository, IncidentRepository incidentRepository) {
         this.eventRepository = eventRepository;
+        this.incidentRepository = incidentRepository;
     }
 
     @Transactional
     public SecurityEvent save(SecurityEvent event) {
         return eventRepository.save(event);
+    }
+
+    @Transactional
+    public IncidentReport saveIncident(IncidentReport report) {
+        return incidentRepository.save(report);
     }
 
     public Optional<SecurityEvent> findById(UUID id) {

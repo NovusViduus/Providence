@@ -21,7 +21,7 @@ public class ResponseAction {
     @Column(name = "action_type", nullable = false, length = 32)
     private String actionType;
 
-    @Column(name = "source_ip", nullable = false, columnDefinition = "inet")
+    @Column(name = "source_ip", nullable = false, columnDefinition = "varchar(45)")
     private String sourceIp;
 
     @Column(nullable = false)

@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 /**
@@ -44,15 +45,32 @@ public class IngestController {
         try {
             SecurityEvent event = new SecurityEvent();
             event.setEventId((String) body.getOrDefault("eventId", "oracle-" + System.currentTimeMillis()));
-            event.setTimestamp(Instant.ofEpochMilli(((Number) body.getOrDefault("timestamp", System.currentTimeMillis())).longValue()));
+
+            // Accept timestamp as epoch millis (Number) or ISO-8601 string
+            Object tsRaw = body.getOrDefault("timestamp", System.currentTimeMillis());
+            Instant ts;
+            if (tsRaw instanceof Number) {
+                ts = Instant.ofEpochMilli(((Number) tsRaw).longValue());
+            } else if (tsRaw instanceof String) {
+                String tsStr = (String) tsRaw;
+                try {
+                    ts = Instant.parse(tsStr);
+                } catch (DateTimeParseException e) {
+                    // Try as epoch millis string
+                    ts = Instant.ofEpochMilli(Long.parseLong(tsStr));
+                }
+            } else {
+                ts = Instant.now();
+            }
+            event.setTimestamp(ts);
             event.setSourceIp((String) body.getOrDefault("sourceIp", "0.0.0.0"));
-            event.setSourcePort(((Number) body.getOrDefault("sourcePort", 0)).intValue());
+            event.setSourcePort(toInt(body.getOrDefault("sourcePort", 0)));
             event.setDestIp((String) body.getOrDefault("destIp", "0.0.0.0"));
-            event.setDestPort(((Number) body.getOrDefault("destPort", 0)).intValue());
+            event.setDestPort(toInt(body.getOrDefault("destPort", 0)));
             event.setProtocol((String) body.getOrDefault("protocol", "TCP"));
             event.setCategory((String) body.getOrDefault("category", "BENIGN"));
             event.setSubcategory((String) body.getOrDefault("subcategory", ""));
-            event.setConfidence(((Number) body.getOrDefault("confidence", 0.0)).floatValue());
+            event.setConfidence(toFloat(body.getOrDefault("confidence", 0.0)));
             event.setSourceComponent((String) body.getOrDefault("sourceComponent", "oracle"));
 
             String tier = EventService.determineTier(event.getCategory(), event.getConfidence());
@@ -72,6 +90,7 @@ public class IngestController {
                 var report = incidentGenerator.generate(saved, decision);
                 if (report != null) {
                     report.setPendingApproval(true);
+                    eventService.saveIncident(report);
                 }
             }
 
@@ -86,5 +105,17 @@ public class IngestController {
             log.error("[INGEST] Error: {}", e.getMessage());
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    private static int toInt(Object val) {
+        if (val instanceof Number) return ((Number) val).intValue();
+        if (val instanceof String) return Integer.parseInt((String) val);
+        return 0;
+    }
+
+    private static float toFloat(Object val) {
+        if (val instanceof Number) return ((Number) val).floatValue();
+        if (val instanceof String) return Float.parseFloat((String) val);
+        return 0f;
     }
 }

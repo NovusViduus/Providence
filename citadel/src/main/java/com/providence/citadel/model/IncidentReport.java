@@ -46,7 +46,7 @@ public class IncidentReport {
     @Column(name = "actions_taken", nullable = false, columnDefinition = "jsonb")
     private String actionsTaken;
 
-    @Column(name = "source_ip", nullable = false, columnDefinition = "inet")
+    @Column(name = "source_ip", nullable = false, columnDefinition = "varchar(45)")
     private String sourceIp;
 
     @Column(nullable = false, length = 32)
