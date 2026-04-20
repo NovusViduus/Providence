@@ -6,13 +6,10 @@ SSHes to each honeypot, grabs new [CLASSIFY] lines from eye.log,
 and POSTs them to Citadel's /api/v1/events/ingest endpoint so the
 full response pipeline runs (incidents, actions, blocks).
 
-Requires:
-  - ~/.ssh/honeypot_key (SSH key for honeypots)
-  - Citadel running on localhost:8080
-  - requests: pip3 install requests (or use urllib)
+Safety: caps at MAX_PER_RUN events per execution to avoid overloading Citadel.
 """
 
-import subprocess, re, os, sys, fcntl, time, json
+import subprocess, re, os, sys, fcntl, json
 from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 from urllib.error import URLError
@@ -30,6 +27,7 @@ KEY = os.path.expanduser("~/.ssh/honeypot_key")
 STATE_DIR = os.path.expanduser("~/.eye_state")
 os.makedirs(STATE_DIR, exist_ok=True)
 
+MAX_PER_RUN = 200
 INTERNAL = ("169.254.", "10.", "127.")
 
 def get_token():
@@ -49,15 +47,14 @@ def post_event(token, payload):
                   headers={"Content-Type": "application/json",
                            "Authorization": f"Bearer {token}"})
     try:
-        resp = urlopen(req, timeout=10)
+        resp = urlopen(req, timeout=5)
         return resp.status == 200
-    except URLError:
+    except Exception:
         return False
 
 def is_internal(ip):
     if ip.startswith(INTERNAL):
         return True
-    # 172.16-31.x
     if ip.startswith("172."):
         parts = ip.split(".")
         if len(parts) >= 2 and 16 <= int(parts[1]) <= 31:
@@ -71,8 +68,12 @@ token = get_token()
 now = datetime.now(timezone.utc)
 total_ok = 0
 total_err = 0
+budget = MAX_PER_RUN
 
 for hp in HONEYPOTS:
+    if budget <= 0:
+        break
+
     offset_file = f"{STATE_DIR}/{hp}.offset"
     offset = 0
     if os.path.exists(offset_file):
@@ -83,8 +84,9 @@ for hp in HONEYPOTS:
             ["ssh", "-i", KEY, "-p", "62222",
              "-o", "ConnectTimeout=10",
              "-o", "StrictHostKeyChecking=no",
+             "-o", "BatchMode=yes",
              f"ubuntu@{hp}",
-             f"wc -c < ~/eye.log; tail -c +{offset+1} ~/eye.log"],
+             f"wc -c < ~/eye.log; tail -c +{offset+1} ~/eye.log 2>/dev/null | head -c 500000"],
             capture_output=True, text=True, timeout=30
         )
         if r.returncode != 0:
@@ -92,10 +94,13 @@ for hp in HONEYPOTS:
             continue
 
         lines = r.stdout.strip().split("\n")
-        if not lines:
+        if not lines or len(lines) < 1:
             continue
 
         newsize = lines[0].strip()
+        if not newsize.isdigit():
+            continue
+
         classify = [l for l in lines[1:] if "[CLASSIFY]" in l]
     except Exception as e:
         print(f"SSH ERROR {hp}: {e}")
@@ -104,8 +109,12 @@ for hp in HONEYPOTS:
     ok = 0
     err = 0
     ts_millis = int(now.timestamp() * 1000)
+    posted = 0
 
     for i, line in enumerate(classify):
+        if posted >= budget:
+            break
+
         m = re.search(
             r'\[CLASSIFY\]\s+(\S+):(\d+)\s+<->\s+(\S+):(\d+)\s+.*?(\w+)\s+\(([\d.]+)\)',
             line
@@ -115,7 +124,6 @@ for hp in HONEYPOTS:
 
         src_ip, src_port, dst_ip, dst_port, category, confidence = m.groups()
 
-        # Swap src/dst if source is internal (return traffic)
         if is_internal(src_ip) and not is_internal(dst_ip):
             src_ip, dst_ip = dst_ip, src_ip
             src_port, dst_port = dst_port, src_port
@@ -142,13 +150,16 @@ for hp in HONEYPOTS:
             ok += 1
         else:
             err += 1
+        posted += 1
 
     total_ok += ok
     total_err += err
+    budget -= posted
 
+    # Save offset even if some failed (avoid re-processing same data)
     if classify:
         open(offset_file, "w").write(newsize)
-        print(f"{now.isoformat()}: {hp} -> {ok} ok, {err} err ({len(classify)} classify lines)")
+        print(f"{now.isoformat()}: {hp} -> {ok} ok, {err} err ({len(classify)} lines, {posted} attempted)")
 
 if total_ok > 0 or total_err > 0:
     print(f"TOTAL: {total_ok} ingested, {total_err} errors")
