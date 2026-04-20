@@ -3,118 +3,204 @@ import { Volume2, VolumeX, Play, Pause } from 'lucide-react';
 
 /**
  * Procedural synthwave ambient generator using Web Audio API.
- * Creates a layered drone with bass, pad, and arpeggio that
- * sounds like a cyberpunk dashboard soundtrack.
- * Zero external files, zero licensing issues.
+ * Layered synth engine: sub-bass, sawtooth bass, detuned pads,
+ * square arp with delay, noise texture, and pluck hits.
+ * Everything evolves over time. Zero external files.
  */
 
-interface SynthNodes {
+interface SynthEngine {
   ctx: AudioContext;
   master: GainNode;
-  bass: OscillatorNode;
-  bassGain: GainNode;
-  pad1: OscillatorNode;
-  pad2: OscillatorNode;
-  padGain: GainNode;
-  arp: OscillatorNode;
-  arpGain: GainNode;
-  lfo: OscillatorNode;
-  lfoGain: GainNode;
-  filter: BiquadFilterNode;
-  arpInterval?: ReturnType<typeof setInterval>;
+  allOscillators: OscillatorNode[];
+  allIntervals: ReturnType<typeof setInterval>[];
+  noiseSource?: AudioBufferSourceNode;
 }
 
-// Scale pools: dark cyberpunk keys to cycle through
 const SCALES = [
-  [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33],  // A minor pentatonic
-  [196, 233.08, 261.63, 293.66, 349.23, 392, 466.16, 523.25], // G minor pentatonic
-  [174.61, 207.65, 233.08, 261.63, 311.13, 349.23, 415.30, 466.16], // F minor pentatonic
-  [164.81, 196, 220, 261.63, 293.66, 329.63, 392, 440], // E minor pentatonic
+  [220, 261.63, 293.66, 329.63, 392, 440, 523.25, 587.33],
+  [196, 233.08, 261.63, 293.66, 349.23, 392, 466.16, 523.25],
+  [174.61, 207.65, 233.08, 261.63, 311.13, 349.23, 415.30, 466.16],
+  [164.81, 196, 220, 261.63, 293.66, 329.63, 392, 440],
 ];
 
 const ARP_PATTERNS = [
-  [0, 2, 4, 5, 7, 5, 4, 2],       // ascending/descending
-  [0, 4, 2, 5, 3, 7, 5, 4],       // broken chord
-  [7, 5, 4, 2, 0, 2, 4, 5],       // descending/ascending
-  [0, 0, 4, 4, 5, 5, 7, 7],       // doubled steps
-  [0, 7, 2, 5, 4, 0, 5, 2],       // random jumps
-  [0, 2, 0, 4, 0, 5, 0, 7],       // pedal tone
+  [0, 2, 4, 5, 7, 5, 4, 2],
+  [0, 4, 2, 5, 3, 7, 5, 4],
+  [7, 5, 4, 2, 0, 2, 4, 5],
+  [0, 0, 4, 4, 5, 5, 7, 7],
+  [0, 7, 2, 5, 4, 0, 5, 2],
+  [0, 2, 0, 4, 0, 5, 0, 7],
 ];
 
-const BASS_ROOTS = [55, 49, 43.65, 41.20]; // A1, G1, F1, E1
+const BASS_ROOTS = [55, 49, 43.65, 41.20];
+const ARP_SPEEDS = [375, 300, 500, 250];
 
-const ARP_SPEEDS = [375, 300, 500, 250]; // BPM variations
+function createNoiseBuffer(ctx: AudioContext, seconds: number): AudioBuffer {
+  const size = ctx.sampleRate * seconds;
+  const buf = ctx.createBuffer(1, size, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < size; i++) data[i] = Math.random() * 2 - 1;
+  return buf;
+}
 
-function createSynth(volume: number): SynthNodes {
+function createDelay(ctx: AudioContext, time: number, feedback: number, dest: AudioNode): { input: DelayNode } {
+  const delay = ctx.createDelay(2);
+  delay.delayTime.value = time;
+  const fb = ctx.createGain();
+  fb.gain.value = feedback;
+  const wet = ctx.createGain();
+  wet.gain.value = 0.3;
+  delay.connect(fb);
+  fb.connect(delay);
+  delay.connect(wet);
+  wet.connect(dest);
+  return { input: delay };
+}
+
+function createSynth(volume: number): SynthEngine {
   const ctx = new AudioContext();
   const master = ctx.createGain();
   master.gain.value = volume;
   master.connect(ctx.destination);
 
-  // Low-pass filter for warmth
+  const allOscillators: OscillatorNode[] = [];
+  const allIntervals: ReturnType<typeof setInterval>[] = [];
+
+  // Main filter
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.value = 800;
-  filter.Q.value = 2;
+  filter.frequency.value = 900;
+  filter.Q.value = 3;
   filter.connect(master);
 
-  // Pick initial key
+  // Second filter for high-end shimmer
+  const hiFilter = ctx.createBiquadFilter();
+  hiFilter.type = 'highpass';
+  hiFilter.frequency.value = 2000;
+  hiFilter.Q.value = 0.5;
+  hiFilter.connect(master);
+
   let scaleIdx = 0;
   let patternIdx = 0;
   let currentScale = SCALES[0];
   let currentPattern = ARP_PATTERNS[0];
 
-  // Bass drone
+  // === SUB BASS (deep sine pulse) ===
+  const subGain = ctx.createGain();
+  subGain.gain.value = 0.15;
+  subGain.connect(master);
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.value = BASS_ROOTS[0] / 2; // One octave below bass
+  sub.connect(subGain);
+  allOscillators.push(sub);
+
+  // Sub pulse LFO
+  const subLfo = ctx.createOscillator();
+  subLfo.type = 'sine';
+  subLfo.frequency.value = 0.15;
+  const subLfoGain = ctx.createGain();
+  subLfoGain.gain.value = 0.08;
+  subLfo.connect(subLfoGain);
+  subLfoGain.connect(subGain.gain);
+  allOscillators.push(subLfo);
+
+  // === SAWTOOTH BASS ===
   const bassGain = ctx.createGain();
-  bassGain.gain.value = 0.12;
+  bassGain.gain.value = 0.10;
   bassGain.connect(filter);
   const bass = ctx.createOscillator();
   bass.type = 'sawtooth';
   bass.frequency.value = BASS_ROOTS[0];
   bass.connect(bassGain);
+  allOscillators.push(bass);
 
-  // Pad layer 1 (A3 = 220Hz)
+  // === DETUNED PAD STACK (4 oscillators for thick synth pad) ===
   const padGain = ctx.createGain();
-  padGain.gain.value = 0.06;
+  padGain.gain.value = 0.04;
   padGain.connect(filter);
-  const pad1 = ctx.createOscillator();
-  pad1.type = 'sine';
-  pad1.frequency.value = 220;
-  pad1.connect(padGain);
 
-  // Pad layer 2 (E3 = 164.81Hz, slight detune for width)
-  const pad2 = ctx.createOscillator();
-  pad2.type = 'triangle';
-  pad2.frequency.value = 164.81;
-  pad2.detune.value = 8;
-  pad2.connect(padGain);
+  const padFreqs = [220, 220, 164.81, 329.63];
+  const padTypes: OscillatorType[] = ['sine', 'triangle', 'triangle', 'sine'];
+  const padDetunes = [0, 12, 8, -6];
 
-  // Arpeggio (will be modulated)
+  const pads = padFreqs.map((freq, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = padTypes[i];
+    osc.frequency.value = freq;
+    osc.detune.value = padDetunes[i];
+    osc.connect(padGain);
+    allOscillators.push(osc);
+    return osc;
+  });
+
+  // === ARPEGGIO with delay ===
   const arpGain = ctx.createGain();
   arpGain.gain.value = 0;
   arpGain.connect(filter);
+  const arpDelay = createDelay(ctx, 0.375, 0.35, filter);
+  arpGain.connect(arpDelay.input);
+
   const arp = ctx.createOscillator();
   arp.type = 'square';
   arp.frequency.value = 440;
   arp.connect(arpGain);
+  allOscillators.push(arp);
 
-  // LFO for filter sweep
-  const lfoGain = ctx.createGain();
-  lfoGain.gain.value = 400;
-  lfoGain.connect(filter.frequency);
+  // === PLUCK SYNTH (short attack triangle for Blade Runner hits) ===
+  const pluckGain = ctx.createGain();
+  pluckGain.gain.value = 0;
+  pluckGain.connect(hiFilter);
+  const pluckDelay = createDelay(ctx, 0.5, 0.25, hiFilter);
+  pluckGain.connect(pluckDelay.input);
+
+  const pluck = ctx.createOscillator();
+  pluck.type = 'triangle';
+  pluck.frequency.value = 880;
+  pluck.connect(pluckGain);
+  allOscillators.push(pluck);
+
+  // === NOISE TEXTURE (filtered white noise for atmosphere) ===
+  const noiseBuf = createNoiseBuffer(ctx, 4);
+  const noiseSource = ctx.createBufferSource();
+  noiseSource.buffer = noiseBuf;
+  noiseSource.loop = true;
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.value = 3000;
+  noiseFilter.Q.value = 0.8;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.value = 0.012;
+  noiseSource.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(master);
+
+  // Noise sweep LFO
+  const noiseLfo = ctx.createOscillator();
+  noiseLfo.type = 'sine';
+  noiseLfo.frequency.value = 0.05;
+  const noiseLfoGain = ctx.createGain();
+  noiseLfoGain.gain.value = 2000;
+  noiseLfo.connect(noiseLfoGain);
+  noiseLfoGain.connect(noiseFilter.frequency);
+  allOscillators.push(noiseLfo);
+
+  // === MAIN FILTER LFO ===
   const lfo = ctx.createOscillator();
   lfo.type = 'sine';
-  lfo.frequency.value = 0.08;
+  lfo.frequency.value = 0.06;
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 500;
   lfo.connect(lfoGain);
+  lfoGain.connect(filter.frequency);
+  allOscillators.push(lfo);
 
   // Start everything
-  bass.start();
-  pad1.start();
-  pad2.start();
-  arp.start();
-  lfo.start();
+  allOscillators.forEach(o => o.start());
+  noiseSource.start();
 
-  // Arpeggio pattern with evolution
+
+  // === SEQUENCER ===
   let arpIdx = 0;
   let stepCount = 0;
   let currentSpeed = ARP_SPEEDS[0];
@@ -123,70 +209,112 @@ function createSynth(volume: number): SynthNodes {
     const patIdx = currentPattern[arpIdx % currentPattern.length];
     const note = currentScale[patIdx % currentScale.length];
 
-    // Occasional octave jump for sparkle
-    const octaveShift = Math.random() > 0.85 ? 2 : 1;
+    // Octave jump for sparkle
+    const octaveShift = Math.random() > 0.82 ? 2 : 1;
     arp.frequency.setTargetAtTime(note * octaveShift, ctx.currentTime, 0.01);
 
-    // Vary velocity randomly
-    const vel = 0.02 + Math.random() * 0.03;
+    // Velocity variation
+    const vel = 0.02 + Math.random() * 0.035;
     arpGain.gain.setTargetAtTime(vel, ctx.currentTime, 0.01);
+    const decay = 0.05 + Math.random() * 0.07;
+    arpGain.gain.setTargetAtTime(0, ctx.currentTime + 0.08 + Math.random() * 0.12, decay);
 
-    // Vary note length
-    const decay = 0.06 + Math.random() * 0.06;
-    arpGain.gain.setTargetAtTime(0, ctx.currentTime + 0.1 + Math.random() * 0.1, decay);
-
-    // Occasional rest (silence)
-    if (Math.random() > 0.9) {
+    // Occasional rest
+    if (Math.random() > 0.88) {
       arpGain.gain.setTargetAtTime(0, ctx.currentTime, 0.01);
+    }
+
+    // Pluck hits on random steps (sparse, high notes)
+    if (Math.random() > 0.92) {
+      const pluckNote = currentScale[Math.floor(Math.random() * currentScale.length)] * 2;
+      pluck.frequency.setTargetAtTime(pluckNote, ctx.currentTime, 0.005);
+      pluckGain.gain.setTargetAtTime(0.06 + Math.random() * 0.04, ctx.currentTime, 0.005);
+      pluckGain.gain.setTargetAtTime(0, ctx.currentTime + 0.05, 0.15);
     }
 
     arpIdx++;
     stepCount++;
 
-    // Every 16-32 steps, evolve something
+    // Evolution every 16-32 steps
     if (stepCount % (16 + Math.floor(Math.random() * 16)) === 0) {
       const change = Math.random();
 
-      if (change < 0.3) {
-        // Change key
+      if (change < 0.25) {
+        // Key change
         scaleIdx = (scaleIdx + 1) % SCALES.length;
         currentScale = SCALES[scaleIdx];
-        // Glide bass to new root
         bass.frequency.setTargetAtTime(BASS_ROOTS[scaleIdx], ctx.currentTime, 0.8);
-        // Shift pads
-        pad1.frequency.setTargetAtTime(currentScale[0], ctx.currentTime, 0.5);
-        pad2.frequency.setTargetAtTime(currentScale[0] * 0.75, ctx.currentTime, 0.5);
-      } else if (change < 0.6) {
-        // Change arp pattern
+        sub.frequency.setTargetAtTime(BASS_ROOTS[scaleIdx] / 2, ctx.currentTime, 1.2);
+        pads[0].frequency.setTargetAtTime(currentScale[0], ctx.currentTime, 0.6);
+        pads[1].frequency.setTargetAtTime(currentScale[0], ctx.currentTime, 0.6);
+        pads[2].frequency.setTargetAtTime(currentScale[0] * 0.75, ctx.currentTime, 0.6);
+        pads[3].frequency.setTargetAtTime(currentScale[2] || currentScale[0] * 1.5, ctx.currentTime, 0.6);
+      } else if (change < 0.45) {
+        // Pattern change
         patternIdx = (patternIdx + 1) % ARP_PATTERNS.length;
         currentPattern = ARP_PATTERNS[patternIdx];
         arpIdx = 0;
-      } else if (change < 0.8) {
-        // Change speed
+      } else if (change < 0.6) {
+        // Speed change
         currentSpeed = ARP_SPEEDS[Math.floor(Math.random() * ARP_SPEEDS.length)];
         clearInterval(arpInterval);
         arpInterval = setInterval(playArpStep, currentSpeed);
+        allIntervals[0] = arpInterval;
+      } else if (change < 0.75) {
+        // Filter sweep
+        const target = 400 + Math.random() * 1600;
+        filter.frequency.setTargetAtTime(target, ctx.currentTime, 0.3);
+        setTimeout(() => filter.frequency.setTargetAtTime(900, ctx.currentTime, 1.5), 3000);
+      } else if (change < 0.88) {
+        // Noise swell
+        noiseGain.gain.setTargetAtTime(0.04 + Math.random() * 0.03, ctx.currentTime, 0.5);
+        setTimeout(() => noiseGain.gain.setTargetAtTime(0.012, ctx.currentTime, 2.0), 4000);
       } else {
-        // Filter sweep moment
-        const sweepTarget = 400 + Math.random() * 1200;
-        filter.frequency.setTargetAtTime(sweepTarget, ctx.currentTime, 0.3);
-        setTimeout(() => {
-          filter.frequency.setTargetAtTime(800, ctx.currentTime, 1.0);
-        }, 2000);
+        // Pad volume swell
+        padGain.gain.setTargetAtTime(0.07 + Math.random() * 0.03, ctx.currentTime, 0.8);
+        setTimeout(() => padGain.gain.setTargetAtTime(0.04, ctx.currentTime, 1.5), 5000);
       }
     }
   };
 
-  let arpInterval: ReturnType<typeof setInterval> = setInterval(playArpStep, currentSpeed);
+  let arpInterval = setInterval(playArpStep, currentSpeed);
+  allIntervals.push(arpInterval);
 
-  return { ctx, master, bass, bassGain, pad1, pad2, padGain, arp, arpGain, lfo, lfoGain, filter, arpInterval };
+  // Slow chord stab every 15-25 seconds
+  const stabInterval = setInterval(() => {
+    if (Math.random() > 0.5) return;
+    const root = currentScale[0];
+    const fifth = currentScale[4] || root * 1.5;
+    // Brief sawtooth chord
+    const stabOsc1 = ctx.createOscillator();
+    const stabOsc2 = ctx.createOscillator();
+    const stabGain = ctx.createGain();
+    stabOsc1.type = 'sawtooth';
+    stabOsc2.type = 'sawtooth';
+    stabOsc1.frequency.value = root;
+    stabOsc2.frequency.value = fifth;
+    stabOsc2.detune.value = 6;
+    stabGain.gain.value = 0;
+    stabOsc1.connect(stabGain);
+    stabOsc2.connect(stabGain);
+    stabGain.connect(filter);
+    stabOsc1.start();
+    stabOsc2.start();
+    // Fade in and out
+    stabGain.gain.setTargetAtTime(0.04, ctx.currentTime, 0.3);
+    stabGain.gain.setTargetAtTime(0, ctx.currentTime + 2, 1.0);
+    setTimeout(() => { stabOsc1.stop(); stabOsc2.stop(); }, 6000);
+  }, 18000 + Math.random() * 7000);
+  allIntervals.push(stabInterval);
+
+  return { ctx, master, allOscillators, allIntervals, noiseSource };
 }
 
 export default function MusicPlayer() {
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.3);
   const [muted, setMuted] = useState(false);
-  const synthRef = useRef<SynthNodes | null>(null);
+  const synthRef = useRef<SynthEngine | null>(null);
 
   const start = useCallback(() => {
     if (synthRef.current) return;
@@ -197,17 +325,17 @@ export default function MusicPlayer() {
   const stop = useCallback(() => {
     if (!synthRef.current) return;
     const s = synthRef.current;
-    clearInterval(s.arpInterval);
+    s.allIntervals.forEach(i => clearInterval(i));
     s.master.gain.setTargetAtTime(0, s.ctx.currentTime, 0.5);
     setTimeout(() => {
-      s.bass.stop(); s.pad1.stop(); s.pad2.stop(); s.arp.stop(); s.lfo.stop();
+      s.allOscillators.forEach(o => { try { o.stop(); } catch {} });
+      try { s.noiseSource?.stop(); } catch {}
       s.ctx.close();
       synthRef.current = null;
     }, 1500);
     setPlaying(false);
   }, []);
 
-  // Update volume
   useEffect(() => {
     if (synthRef.current) {
       synthRef.current.master.gain.setTargetAtTime(
@@ -218,7 +346,6 @@ export default function MusicPlayer() {
     }
   }, [volume, muted]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => { if (synthRef.current) stop(); };
   }, [stop]);
