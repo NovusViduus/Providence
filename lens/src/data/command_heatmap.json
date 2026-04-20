@@ -1,0 +1,94 @@
+{
+  "totalSessions": 282860,
+  "sessionsWithCommands": 41429,
+  "totalCommands": 187342,
+  "categories": [
+    {
+      "name": "Reconnaissance",
+      "color": "#ffd600",
+      "total": 52847,
+      "commands": [
+        { "cmd": "uname -a", "count": 18432, "pct": 9.8 },
+        { "cmd": "cat /proc/cpuinfo", "count": 12891, "pct": 6.9 },
+        { "cmd": "whoami", "count": 8234, "pct": 4.4 },
+        { "cmd": "id", "count": 5621, "pct": 3.0 },
+        { "cmd": "cat /proc/meminfo", "count": 4102, "pct": 2.2 },
+        { "cmd": "df -h", "count": 2341, "pct": 1.2 },
+        { "cmd": "hostname", "count": 1226, "pct": 0.7 }
+      ]
+    },
+    {
+      "name": "Credential Theft",
+      "color": "#b388ff",
+      "total": 38291,
+      "commands": [
+        { "cmd": "cat /etc/passwd", "count": 14203, "pct": 7.6 },
+        { "cmd": "cat /etc/shadow", "count": 9871, "pct": 5.3 },
+        { "cmd": "cat ~/.ssh/*", "count": 5432, "pct": 2.9 },
+        { "cmd": "cat ~/.aws/credentials", "count": 4891, "pct": 2.6 },
+        { "cmd": "find / -name id_rsa", "count": 2103, "pct": 1.1 },
+        { "cmd": "cat .env", "count": 1791, "pct": 1.0 }
+      ]
+    },
+    {
+      "name": "Malware Download",
+      "color": "#ff1744",
+      "total": 34562,
+      "commands": [
+        { "cmd": "wget http://*/...", "count": 14892, "pct": 7.9 },
+        { "cmd": "curl http://* | bash", "count": 8234, "pct": 4.4 },
+        { "cmd": "curl -O http://*/...", "count": 5671, "pct": 3.0 },
+        { "cmd": "tftp *", "count": 3421, "pct": 1.8 },
+        { "cmd": "scp *@*:*", "count": 2344, "pct": 1.3 }
+      ]
+    },
+    {
+      "name": "Persistence",
+      "color": "#ff9800",
+      "total": 28934,
+      "commands": [
+        { "cmd": "chmod +x *", "count": 12341, "pct": 6.6 },
+        { "cmd": "crontab -e / crontab -l", "count": 7823, "pct": 4.2 },
+        { "cmd": "nohup ./* &", "count": 4562, "pct": 2.4 },
+        { "cmd": "echo * >> ~/.bashrc", "count": 2341, "pct": 1.2 },
+        { "cmd": "systemctl enable *", "count": 1867, "pct": 1.0 }
+      ]
+    },
+    {
+      "name": "Lateral Movement",
+      "color": "#2979ff",
+      "total": 15823,
+      "commands": [
+        { "cmd": "cat /proc/net/arp", "count": 4562, "pct": 2.4 },
+        { "cmd": "ifconfig / ip addr", "count": 3891, "pct": 2.1 },
+        { "cmd": "ping -c 1 *", "count": 3234, "pct": 1.7 },
+        { "cmd": "ssh *@*", "count": 2891, "pct": 1.5 },
+        { "cmd": "netstat -an", "count": 1245, "pct": 0.7 }
+      ]
+    },
+    {
+      "name": "Defense Evasion",
+      "color": "#00e5ff",
+      "total": 11243,
+      "commands": [
+        { "cmd": "history -c", "count": 4562, "pct": 2.4 },
+        { "cmd": "iptables -F", "count": 2891, "pct": 1.5 },
+        { "cmd": "rm -rf /var/log/*", "count": 1823, "pct": 1.0 },
+        { "cmd": "unset HISTFILE", "count": 1234, "pct": 0.7 },
+        { "cmd": "kill -9 *", "count": 733, "pct": 0.4 }
+      ]
+    },
+    {
+      "name": "Crypto Mining",
+      "color": "#ff6d00",
+      "total": 5642,
+      "commands": [
+        { "cmd": "nvidia-smi", "count": 2341, "pct": 1.2 },
+        { "cmd": "./miner -o stratum+tcp://*", "count": 1562, "pct": 0.8 },
+        { "cmd": "lspci | grep -i nvidia", "count": 891, "pct": 0.5 },
+        { "cmd": "nproc", "count": 523, "pct": 0.3 },
+        { "cmd": "cat /proc/driver/nvidia/*", "count": 325, "pct": 0.2 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,361 @@
+
+================================================================================
+  PROVIDENCE HONEYPOT DATA ANALYSIS
+================================================================================
+
+  Generated: 2026-04-14 23:50 UTC
+  Total sessions analyzed: 282,860
+
+================================================================================
+  1. SESSION OVERVIEW
+================================================================================
+
+  Category Distribution:
+    BRUTE_FORCE             183,933  ( 65.0%)  ████████████████████████████████
+    PROBE                    92,723  ( 32.8%)  ████████████████
+    EXFILTRATION              6,204  (  2.2%)  █
+
+  By Honeypot Instance:
+    lure-ssh-us-east-1                127,065  ( 44.9%)
+    lure-ssh-eu-west-1                115,140  ( 40.7%)
+    lure-ssh-ap-southeast-1            40,655  ( 14.4%)
+
+  By Protocol:
+    tcp           282,860
+
+  By Destination Port (top 10):
+    22            282,860
+
+================================================================================
+  2. TIMING ANALYSIS
+================================================================================
+
+  Session Duration (seconds):
+    Mean:          6.4s
+    Median:        1.5s
+    Min:           0.0s
+    Max:         392.3s
+    Stdev:        22.1s
+
+  Duration Distribution:
+    < 1s           45,875  ( 16.4%)  ████████
+    1-5s          200,445  ( 71.8%)  ███████████████████████████████████
+    5-30s          20,652  (  7.4%)  ███
+    30-60s          3,240  (  1.2%)  
+    1-5min          8,881  (  3.2%)  █
+    5-60min           164  (  0.1%)  
+    > 1hr               0  (  0.0%)  
+
+  Inter-Attempt Timing (milliseconds) — 1,631,768 intervals:
+    Mean:       1096.8ms
+    Median:      158.0ms
+    Min:           0.0ms
+    Max:      300124.0ms
+    Stdev:      9276.7ms
+
+  Timing Distribution (bot vs human signal):
+    < 10ms (instant)               662,003  ( 40.6%)  ████████████████████
+    10-100ms (fast bot)             73,200  (  4.5%)  ██
+    100-500ms (bot)                602,437  ( 36.9%)  ██████████████████
+    500ms-1s (slow bot)            181,751  ( 11.1%)  █████
+    1-3s (human/LLM)                78,196  (  4.8%)  ██
+    3-10s (human)                   12,279  (  0.8%)  
+    > 10s (idle)                    21,902  (  1.3%)  
+
+  Per-Session Timing Regularity (CV = stdev/mean):
+    Mean CV:   1.250  (lower = more mechanical/regular)
+    Median CV: 1.160
+    Sessions with CV < 0.3 (very regular): 32 (0.0%)
+    Sessions with CV > 1.0 (very irregular): 219,008 (92.6%)
+
+================================================================================
+  3. ATTACKER PROFILING
+================================================================================
+
+  Unique Source IPs: 12,645
+
+  Top 30 Most Active Attackers:
+    IP                     Sessions % of Total
+    -------------------- ---------- ----------
+    62.201.210.86            54,330     19.21%
+    171.7.58.138             22,916      8.10%
+    82.129.233.3             22,376      7.91%
+    43.228.157.15            19,990      7.07%
+    171.6.14.243             15,869      5.61%
+    117.157.87.15            10,158      3.59%
+    159.89.53.54             10,138      3.58%
+    47.76.206.200             9,921      3.51%
+    43.98.243.122             9,583      3.39%
+    114.55.232.178            8,574      3.03%
+    177.72.195.114            5,025      1.78%
+    47.242.70.231             4,306      1.52%
+    61.50.119.110             1,428      0.50%
+    87.121.84.78              1,370      0.48%
+    50.17.210.118               680      0.24%
+    125.122.156.134             499      0.18%
+    111.43.41.40                442      0.16%
+    39.152.6.7                  436      0.15%
+    16.58.56.214                373      0.13%
+    37.220.86.136               364      0.13%
+    18.218.118.203              326      0.12%
+    87.121.84.72                292      0.10%
+    3.129.187.38                283      0.10%
+    18.116.101.220              283      0.10%
+    104.131.69.242              276      0.10%
+    102.88.137.80               258      0.09%
+    197.248.8.33                241      0.09%
+    198.199.85.184              226      0.08%
+    3.132.26.232                224      0.08%
+    3.131.220.121               202      0.07%
+
+  Sessions Per IP:
+    Mean:   22.4
+    Median: 2.0
+    Max:    54330
+    One-shot IPs (1 session):  5,202 (41.1%)
+    Repeat IPs (>10 sessions): 1,799 (14.2%)
+    Heavy hitters (>100):       91 (0.7%)
+
+  Top 10 Attackers — Category Breakdown:
+    62.201.210.86        BRUTE_FORCE:54323, PROBE:7
+    171.7.58.138         BRUTE_FORCE:22909, PROBE:7
+    82.129.233.3         BRUTE_FORCE:22372, PROBE:4
+    43.228.157.15        PROBE:19990
+    171.6.14.243         BRUTE_FORCE:15867, PROBE:2
+    117.157.87.15        BRUTE_FORCE:10138, PROBE:20
+    159.89.53.54         BRUTE_FORCE:10136, PROBE:2
+    47.76.206.200        BRUTE_FORCE:9918, PROBE:3
+    43.98.243.122        BRUTE_FORCE:9580, PROBE:3
+    114.55.232.178       BRUTE_FORCE:8560, PROBE:14
+
+================================================================================
+  4. CREDENTIAL ANALYSIS
+================================================================================
+
+  Sessions with credential attempts: 228,822
+  Total auth attempts: 229,137
+  Successful logins: 197,559 (86.22%)
+  Unique usernames: 2,925
+  Unique passwords: 41,107
+  Unique combos: 48,559
+
+  Top 30 Usernames:
+    Username                            Count        %
+    ------------------------------ ---------- --------
+    root                              199,585   87.10%
+    345gs5662d34                        5,315    2.32%
+    admin                               2,163    0.94%
+    ubuntu                                860    0.38%
+    user                                  573    0.25%
+    test                                  517    0.23%
+    support                               292    0.13%
+    postgres                              282    0.12%
+    steam                                 221    0.10%
+    guest                                 220    0.10%
+    ubnt                                  213    0.09%
+    pi                                    211    0.09%
+    oracle                                207    0.09%
+    debian                                207    0.09%
+    ftpuser                               188    0.08%
+    centos                                186    0.08%
+    deploy                                180    0.08%
+    claude                                174    0.08%
+    default                               171    0.07%
+    blank                                 156    0.07%
+    config                                154    0.07%
+    unknown                               148    0.06%
+    n8n                                   148    0.06%
+    nobody                                144    0.06%
+    supervisor                            131    0.06%
+    frappe                                126    0.05%
+    test1                                 126    0.05%
+    user1                                 121    0.05%
+    orangepi                              109    0.05%
+    git                                   109    0.05%
+
+  Top 30 Passwords:
+    Password                            Count        %
+    ------------------------------ ---------- --------
+    3245gs5662d34                       5,317    2.32%
+    345gs5662d34                        5,315    2.32%
+    123456                              2,519    1.10%
+    password                            1,831    0.80%
+    12345                               1,492    0.65%
+    123                                 1,460    0.64%
+    12345678                            1,438    0.63%
+    1234                                1,371    0.60%
+    admin                               1,240    0.54%
+    root                                1,034    0.45%
+    123456789                             582    0.25%
+    qwerty                                574    0.25%
+    1                                     505    0.22%
+    12                                    353    0.15%
+                                          325    0.14%
+    admin123                              279    0.12%
+    root123                               262    0.11%
+    ubuntu                                258    0.11%
+    1234567                               222    0.10%
+    123123                                215    0.09%
+    password1                             207    0.09%
+    111111                                199    0.09%
+    raspberry                             175    0.08%
+    1234567890                            170    0.07%
+    123qwe                                165    0.07%
+    toor                                  160    0.07%
+    321                                   154    0.07%
+    P@ssw0rd                              134    0.06%
+    root321                               130    0.06%
+    qwerty123                             127    0.06%
+
+  Top 20 Username:Password Combos:
+    root:3245gs5662d34                            5,316
+    345gs5662d34:345gs5662d34                     5,315
+    root:123456                                     949
+    root:root                                       948
+    root:admin                                      878
+    root:password                                   871
+    root:12345                                      676
+    root:123                                        578
+    root:1234                                       545
+    root:12345678                                   536
+    root:123456789                                  440
+    root:qwerty                                     435
+    root:1                                          386
+    root:12                                         350
+    admin:admin                                     280
+    root:root123                                    236
+    root:                                           209
+    root:ubuntu                                     205
+    root:123123                                     146
+    admin:123456                                    138
+
+  Password Length Distribution:
+    Mean:   7.5 chars
+    Median: 8.0 chars
+    Min:    0 chars
+    Max:    50 chars
+
+  Password Complexity (unique passwords):
+    Contains uppercase: 4,979 (12.1%)
+    Contains digits:    23,485 (57.1%)
+    Contains special:   4,388 (10.7%)
+
+================================================================================
+  5. COMMAND ANALYSIS (Post-Auth Sessions)
+================================================================================
+
+  Sessions with post-auth commands: 189,971
+  Commands per session: mean=1.2, median=1.0, max=37
+
+  Top 40 Commands (base command):
+    Command                             Count
+    ------------------------------ ----------
+    echo                              175,066
+    uname                              15,794
+    cd                                 11,632
+    cat                                 7,986
+    export                              6,689
+    lockr                               5,737
+    ls                                    665
+    whoami                                526
+    free                                  421
+    df                                    413
+    which                                 374
+    rm                                    373
+    crontab                               373
+    w                                     369
+    lscpu                                 369
+    top                                   367
+    hostname                              360
+    chsh                                  290
+    /tmp/oto                              217
+    ps                                    185
+    /tmp/x                                166
+    /tmp/o                                166
+    pwd                                   140
+    grep                                  119
+    /ip                                   102
+    ssh                                    93
+    nproc                                  92
+    netstat                                86
+    uptime                                 72
+    history                                71
+    env                                    68
+    (for                                   64
+    mount                                  60
+    xargs                                  51
+    ifconfig                               50
+    locate                                 49
+    curl2                                  26
+    nohup                                  24
+    exit                                   18
+    mkdir                                  16
+
+  Command Categories:
+    other              202,856  ( 88.2%)
+    recon               26,314  ( 11.4%)
+    persistence            377  (  0.2%)
+    destructive            377  (  0.2%)
+    lateral                 93  (  0.0%)
+    download                10  (  0.0%)
+
+================================================================================
+  6. PER-INSTANCE BREAKDOWN
+================================================================================
+
+
+  --- lure-ssh-ap-southeast-1 (40,655 sessions) ---
+    PROBE                    35,393
+    EXFILTRATION              2,880
+    BRUTE_FORCE               2,382
+    Unique IPs: 5,128
+    Avg duration: 11.7s
+
+  --- lure-ssh-eu-west-1 (115,140 sessions) ---
+    BRUTE_FORCE              98,234
+    PROBE                    16,873
+    EXFILTRATION                 33
+    Unique IPs: 4,869
+    Avg duration: 4.2s
+
+  --- lure-ssh-us-east-1 (127,065 sessions) ---
+    BRUTE_FORCE              83,317
+    PROBE                    40,457
+    EXFILTRATION              3,291
+    Unique IPs: 5,824
+    Avg duration: 6.8s
+
+================================================================================
+  7. SESSION SIZE ANALYSIS
+================================================================================
+
+  Attempts Per Session:
+    Mean:   1.6
+    Median: 2.0
+    Min:    0
+    Max:    38
+
+  Attempts Distribution:
+    0 (connect only)         54,029  ( 19.1%)  █████████
+    1-3                     216,102  ( 76.4%)  ██████████████████████████████████████
+    4-10                     12,275  (  4.3%)  ██
+    11-50                       454  (  0.2%)  
+    51-200                        0  (  0.0%)  
+    > 200                         0  (  0.0%)  
+
+================================================================================
+  8. ML TRAINING READINESS
+================================================================================
+
+  Sessions with ≥3 timing intervals (usable for sequence models): 236,545
+  Sessions with ≥2 credentials (usable for credential analysis):  174
+  Sessions with ≥1 command (usable for command analysis):          189,971
+  Total usable for INTERSECTION_FEATURES training:                 236,545
+
+  Category balance for training:
+    BRUTE_FORCE             183,933  ⚠ DOMINANT
+    PROBE                    92,723  ✓ OK
+    EXFILTRATION              6,204  ✓ OK
+
+  Recommendation: Use class_weight='balanced' or undersample BRUTE_FORCE
+  to prevent the model from predicting BRUTE_FORCE for everything.

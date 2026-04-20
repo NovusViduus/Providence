@@ -1,0 +1,51 @@
+{
+  "Records": [
+    {
+      "eventTime": "2026-04-10T14:30:00Z",
+      "eventSource": "iam.amazonaws.com",
+      "eventName": "AttachUserPolicy",
+      "sourceIPAddress": "203.0.113.42",
+      "userIdentity": {
+        "type": "IAMUser",
+        "userName": "suspicious-user",
+        "arn": "arn:aws:iam::123456789012:user/suspicious-user"
+      },
+      "requestParameters": {
+        "policyArn": "arn:aws:iam::aws:policy/AdministratorAccess",
+        "userName": "suspicious-user"
+      },
+      "awsRegion": "us-east-1",
+      "readOnly": false
+    },
+    {
+      "eventTime": "2026-04-10T14:31:00Z",
+      "eventSource": "ec2.amazonaws.com",
+      "eventName": "RunInstances",
+      "sourceIPAddress": "203.0.113.42",
+      "userIdentity": {
+        "type": "IAMUser",
+        "userName": "suspicious-user",
+        "arn": "arn:aws:iam::123456789012:user/suspicious-user"
+      },
+      "requestParameters": {
+        "instanceType": "p3.2xlarge"
+      },
+      "awsRegion": "us-east-1",
+      "readOnly": false
+    },
+    {
+      "eventTime": "2026-04-10T14:32:00Z",
+      "eventSource": "s3.amazonaws.com",
+      "eventName": "ListBuckets",
+      "sourceIPAddress": "10.0.1.5",
+      "userIdentity": {
+        "type": "IAMUser",
+        "userName": "normal-user",
+        "arn": "arn:aws:iam::123456789012:user/normal-user"
+      },
+      "requestParameters": {},
+      "awsRegion": "us-east-1",
+      "readOnly": true
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+# Lab environment for generating synthetic AI_AGENT training data.
+# FOR DEFENSIVE RESEARCH ONLY.
+# Isolated Docker network — attacker container cannot reach the internet.
+
+services:
+  lab-honeypot:
+    image: cowrie/cowrie:latest
+    networks:
+      - lab-net
+    ports:
+      - "2222:2222"
+    volumes:
+      - lab-logs:/cowrie/var/log/cowrie
+
+  lab-attacker:
+    build:
+      context: ./ml/src/data/lab
+      dockerfile: Dockerfile
+    networks:
+      - lab-net
+    depends_on:
+      - lab-honeypot
+    environment:
+      - HONEYPOT_HOST=lab-honeypot
+      - HONEYPOT_PORT=2222
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - lab-sessions:/app/sessions
+      - lab-logs:/app/honeypot-logs
+
+networks:
+  lab-net:
+    internal: true  # No external internet access
+
+volumes:
+  lab-logs:
+  lab-sessions:

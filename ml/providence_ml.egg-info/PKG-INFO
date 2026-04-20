@@ -1,0 +1,20 @@
+Metadata-Version: 2.4
+Name: providence-ml
+Version: 0.1.0
+Summary: Providence ML Classification Service
+Requires-Python: >=3.11
+Requires-Dist: scikit-learn>=1.4
+Requires-Dist: xgboost>=2.0
+Requires-Dist: lightgbm>=4.0
+Requires-Dist: pandas>=2.1
+Requires-Dist: numpy>=1.26
+Requires-Dist: matplotlib>=3.8
+Requires-Dist: seaborn>=0.13
+Requires-Dist: protobuf>=4.25
+Requires-Dist: joblib>=1.3
+Requires-Dist: torch>=2.2
+Provides-Extra: test
+Requires-Dist: pytest>=7.4; extra == "test"
+Requires-Dist: ruff>=0.3; extra == "test"
+Provides-Extra: notebook
+Requires-Dist: jupyter>=1.0; extra == "notebook"

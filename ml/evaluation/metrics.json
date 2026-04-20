@@ -1,0 +1,67 @@
+{
+  "model": "lightgbm_intersection",
+  "version": "v1",
+  "feature_set": "intersection",
+  "accuracy": 0.9832892248457853,
+  "f1_macro": 0.7330286016968593,
+  "f1_weighted": 0.9830184179953667,
+  "per_category": {
+    "BENIGN": {
+      "precision": 0.9926772755867838,
+      "recall": 0.9865148900199003,
+      "f1-score": 0.9895864892437739,
+      "support": 2271320.0
+    },
+    "BRUTE_FORCE": {
+      "precision": 0.9923629002576371,
+      "recall": 0.7797137073452863,
+      "f1-score": 0.8732793522267206,
+      "support": 13832.0
+    },
+    "DOS": {
+      "precision": 0.9273812122535109,
+      "recall": 0.973318375612595,
+      "f1-score": 0.9497946764934138,
+      "support": 379737.0
+    },
+    "EXFILTRATION": {
+      "precision": 0.639344262295082,
+      "recall": 0.3328313253012048,
+      "f1-score": 0.43776824034334766,
+      "support": 1992.0
+    },
+    "INJECTION": {
+      "precision": 0.39575289575289574,
+      "recall": 0.09356458238247375,
+      "f1-score": 0.15134736064968624,
+      "support": 2191.0
+    },
+    "PROBE": {
+      "precision": 0.9936437759102238,
+      "recall": 0.9991624896098336,
+      "f1-score": 0.9963954912242142,
+      "support": 158804.0
+    },
+    "accuracy": 0.9832892248457853,
+    "macro avg": {
+      "precision": 0.8235270536760222,
+      "recall": 0.6941842283785489,
+      "f1-score": 0.7330286016968593,
+      "support": 2827876.0
+    },
+    "weighted avg": {
+      "precision": 0.9832504491619798,
+      "recall": 0.9832892248457853,
+      "f1-score": 0.9830184179953667,
+      "support": 2827876.0
+    }
+  },
+  "roc_auc_per_category": {
+    "BENIGN": 0.996628654230428,
+    "BRUTE_FORCE": 0.998201543343842,
+    "DOS": 0.9986025564635941,
+    "EXFILTRATION": 0.7173921889340591,
+    "INJECTION": 0.9191101807913811,
+    "PROBE": 0.9998870180307879
+  }
+}

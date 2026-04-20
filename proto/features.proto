@@ -1,0 +1,60 @@
+syntax = "proto3";
+package providence;
+
+message FeatureVector {
+    // Network layer
+    string src_ip = 1;
+    string dst_ip = 2;
+    uint32 src_port = 3;
+    uint32 dst_port = 4;
+    uint32 protocol = 5;
+    uint32 ttl = 6;
+
+    // Transport layer — flag counts
+    int32 syn_count = 7;
+    int32 ack_count = 8;
+    int32 fin_count = 9;
+    int32 rst_count = 10;
+    int32 psh_count = 11;
+    int32 urg_count = 12;
+
+    // Window sizes
+    uint32 window_size_min = 13;
+    uint32 window_size_max = 14;
+    double window_size_mean = 15;
+
+    // Flow-level timing
+    int64 duration = 16;
+    double packets_per_sec = 17;
+    double bytes_per_sec = 18;
+    double inter_arrival_mean = 19;
+    double inter_arrival_std = 20;
+    int64 inter_arrival_min = 21;
+    int64 inter_arrival_max = 22;
+
+    // Directional counts
+    int32 packet_count = 23;
+    int32 total_bytes = 24;
+    int32 packet_count_fwd = 25;
+    int32 packet_count_bwd = 26;
+    int32 bytes_fwd = 27;
+    int32 bytes_bwd = 28;
+
+    // Payload analysis
+    double payload_entropy_mean = 29;
+    uint32 payload_size_min = 30;
+    uint32 payload_size_max = 31;
+    double payload_size_mean = 32;
+    int32 zero_payload_count = 33;
+
+    // TLS
+    string ja3_hash = 34;
+    bool ja3_seen = 35;
+    int32 cipher_suite_count = 36;
+    int32 extension_count = 37;
+
+    // DNS
+    int32 dns_query_count = 38;
+    int32 dns_unique_domains = 39;
+    double dns_txt_query_ratio = 40;
+}

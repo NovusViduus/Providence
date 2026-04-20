@@ -1,0 +1,37 @@
+syntax = "proto3";
+package providence;
+
+import "features.proto";
+
+message Classification {
+    string category = 1;       // BENIGN, DOS, PROBE, BRUTE_FORCE, INJECTION, EXFILTRATION, AI_AGENT
+    string subcategory = 2;
+    float confidence = 3;      // 0.0–1.0
+    map<string, float> feature_importances = 4;
+}
+
+message ClassifiedEvent {
+    string event_id = 1;       // UUID
+    int64 timestamp = 2;       // epoch millis
+    string source_ip = 3;
+    int32 source_port = 4;
+    string dest_ip = 5;
+    int32 dest_port = 6;
+    string protocol = 7;
+    Classification classification = 8;
+    string source_component = 9;   // "eye", "oracle", "ward"
+    string ja3_hash = 10;
+    float flow_duration = 11;
+    int64 packet_count = 12;
+    int64 byte_count = 13;
+}
+
+message EventAck {
+    string event_id = 1;
+    bool accepted = 2;
+    string response_action = 3;   // OBSERVE, RECOMMEND, ACT
+}
+
+service EventService {
+    rpc ReportEvent (ClassifiedEvent) returns (EventAck);
+}

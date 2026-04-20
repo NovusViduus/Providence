@@ -1,0 +1,81 @@
+services:
+  citadel:
+    build:
+      context: .
+      dockerfile: citadel/Dockerfile
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=providence
+      - DB_PASS=providence
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PROVIDENCE_ADMIN_PASS=Khal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: providence
+      POSTGRES_USER: providence
+      POSTGRES_PASSWORD: providence
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U providence"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    volumes:
+      - ml-socket:/tmp
+    depends_on:
+      - citadel
+
+  lens:
+    build: ./lens
+    ports:
+      - "3000:3000"
+    depends_on:
+      - citadel
+
+  oracle:
+    build: ./oracle
+    environment:
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - CITADEL_URL=http://citadel:8080
+      - PROVIDENCE_JWT=${CITADEL_JWT:-}
+      - FLOW_LOG_BUCKET=${FLOW_LOG_BUCKET:-providence-flow-logs}
+      - CLOUDTRAIL_BUCKET=${CLOUDTRAIL_BUCKET:-providence-cloudtrail}
+    depends_on:
+      - citadel
+
+volumes:
+  pgdata:
+  ml-socket:

@@ -1,0 +1,278 @@
+PROVIDENCE — Poster Content Reference
+Per Providentiam, Securitas
+Graeme Hosford
+================================================================================
+
+TITLE
+  Providence: A Multi-Component Network Security Intelligence Platform
+  with Real-Time ML-Based Traffic Classification
+
+SUBTITLE / TAGLINE
+  Captures, classifies, and responds to network threats in real-time using
+  machine learning trained on lab data and validated against live attacker
+  traffic from a global honeypot fleet.
+
+================================================================================
+PROBLEM STATEMENT
+
+  Network intrusion detection systems (NIDS) face two persistent challenges:
+  (1) models trained on lab datasets rarely prove they generalize to real-world
+  traffic, and (2) the gap between detection and response remains largely manual.
+  Providence addresses both by building an end-to-end pipeline from raw packet
+  capture to automated response, and validating lab-trained models against live
+  attacker traffic from globally distributed honeypots.
+
+================================================================================
+SYSTEM ARCHITECTURE (7 components, 4 languages)
+
+  The Eye (C++17)
+    - Real-time packet capture via libpcap
+    - Lock-free SPSC ring buffer decouples capture from processing
+    - 31 features per flow: flag counts, byte/packet stats, payload entropy,
+      JA3 TLS fingerprinting, DNS parsing, inter-arrival timing
+    - Flow completion via FIN+ACK, RST, or 30s inactivity timeout
+
+  ML Pipeline (Python)
+    - 3 classifiers: Random Forest, XGBoost, LightGBM
+    - Trained on CICIDS2017 (2.83M samples, 6 attack categories)
+    - 16 intersection features with clean semantic mappings
+    - Unix domain socket inference server for sub-millisecond classification
+    - Experimental AI agent detection module (CNN, LSTM, XGBoost on 24
+      behavioral features)
+
+  The Citadel (Java 21 / Spring Boot)
+    - Event storage (PostgreSQL 16), real-time pub/sub (Redis)
+    - gRPC ingestion from The Eye, REST API for dashboard/extensions
+    - Tiered response engine: OBSERVE → RECOMMEND → ACT
+    - 13 playbooks (6 network, 3 cloud, 4 web)
+    - Firewall integration: iptables (Linux), pfctl (macOS), NACL (AWS)
+    - JWT authentication, RBAC, rate limiting
+
+  The Lens (React / TypeScript / Three.js)
+    - Real-time WebSocket event feed with reconnect + backfill
+    - 3D threat globe with geo-located attack origins
+    - Attack feed with pagination + 4 filters (category, tier, confidence, IP)
+    - Incident timeline visualization, response countdown timers
+
+  The Oracle (Python / boto3)
+    - AWS VPC Flow Log + CloudTrail ingestion
+    - Rule-based cloud threat detection (IAM escalation, resource abuse,
+      data exposure)
+    - SNS dispatch for Lambda-based automated remediation
+    - Terraform modules for monitoring + remediation infrastructure
+
+  The Ward (Chrome Extension / TypeScript)
+    - Manifest V3, content script injection
+    - Phishing detection, cryptominer blocking, threat scoring
+    - ~500 bundled blocklist + remote fetch + user custom entries
+    - Connected mode reports to Citadel
+
+  Infrastructure
+    - Docker Compose (6 services), 5 Dockerfiles
+    - 7 CI pipelines (GitHub Actions)
+    - Terraform modules for AWS deployment
+    - 3 protobuf schemas for inter-component communication
+
+================================================================================
+DATASETS
+
+  Training Data: CICIDS2017 (Canadian Institute for Cybersecurity)
+    - 2,830,743 raw rows across 8 CSV files (MachineLearningCSV format)
+    - After cleaning: 2,827,876 samples
+    - 79 original columns → 16 intersection features selected
+    - 6 Providence categories mapped from CICIDS labels:
+        BENIGN:       2,271,320 (80.3%)
+        DOS:            379,737 (13.4%)
+        PROBE:          158,804  (5.6%)
+        BRUTE_FORCE:     13,832  (0.5%)
+        INJECTION:        2,191  (0.08%)
+        EXFILTRATION:     1,992  (0.07%)
+    - 80/20 stratified train/test split, random_state=42
+
+  Honeypot Data: Cowrie SSH Honeypots (self-collected)
+    - 3 AWS t3.micro instances across 3 regions
+        US: us-east-1 (Virginia)
+        EU: eu-west-1 (Ireland)
+        AP: ap-southeast-1 (Singapore)
+    - Collection period: Feb 18 – Apr 15, 2026 (~56 days)
+    - 282,863 sessions from 665 log files (deduplicated)
+    - Session-level behavioral data (Cowrie JSON format):
+        BRUTE_FORCE:    183,933 (65.0%)
+        PROBE:           92,726 (32.8%)
+        EXFILTRATION:     6,204  (2.2%)
+    - 79% of SSH clients identify as SSH-2.0-Go (automated tools)
+    - Notable capture: Trojan.Multiverze cryptominer ELF binary
+
+  16 Intersection Features (shared between CICIDS and The Eye):
+    flow_duration, packet_count_fwd, packet_count_bwd, bytes_fwd, bytes_bwd,
+    packets_per_sec, bytes_per_sec, syn_count, ack_count, fin_count,
+    rst_count, psh_count, urg_count, payload_size_mean, packet_count,
+    total_bytes
+
+================================================================================
+MODEL PERFORMANCE (CICIDS2017, 20% held-out test set)
+
+  Random Forest (200 trees, n_jobs=-1)
+    Accuracy:  0.9293
+    Macro F1:  0.5647
+    Model size: 102 MB
+
+  XGBoost (300 rounds, early stopping, nthread=-1)
+    Accuracy:  0.9299
+    Macro F1:  0.5615
+    Model size: 2.4 MB
+
+  LightGBM (300 rounds, early stopping, num_threads=-1)
+    Accuracy:  0.9831
+    Macro F1:  0.7207
+    Model size: 602 KB    ← Best performer, deployed to honeypots
+
+  Notes:
+    - Macro F1 is lower than accuracy due to severe class imbalance
+      (BENIGN is 80% of data; INJECTION and EXFILTRATION are <0.1%)
+    - LightGBM significantly outperforms RF and XGBoost on minority classes
+    - All models use early stopping to prevent overfitting
+    - Training hardware: Apple M3 MacBook Air, 8 cores
+
+================================================================================
+REAL-WORLD VALIDATION (Live Honeypot Deployment)
+
+  Deployment: The Eye + LightGBM inference server deployed to all 3 honeypots
+  Duration: Overnight capture (Apr 15, 2026)
+  Method: The Eye captures packets on each EC2 instance's network interface,
+          extracts flow features, classifies via LightGBM over Unix socket
+
+  Results (excluding AWS metadata traffic 169.254.169.254):
+    Total flows classified: 1,787
+    BENIGN:       1,399 (78.3%)
+    EXFILTRATION:   382 (21.4%)
+    BRUTE_FORCE:      6  (0.3%)
+
+  Key finding: Model trained exclusively on CICIDS2017 lab data successfully
+  classifies live network flows from real attacker traffic across 3 global
+  regions without any retraining or fine-tuning.
+
+  Observations:
+    - Your own SSH sessions (admin access) correctly classified as BENIGN
+      with 0.957+ confidence
+    - Attacker SSH sessions with data transfer patterns classified as
+      EXFILTRATION with 1.000 confidence
+    - Short probe/scan connections classified as BENIGN (expected — single-
+      packet flows lack distinguishing flow-level features)
+    - BRUTE_FORCE detections correspond to sustained credential stuffing
+      sessions
+
+  Limitation: Honeypot session-level data (Cowrie JSON) and flow-level data
+  (The Eye) capture different feature spaces. Direct cross-validation between
+  the 282K Cowrie sessions and the flow classifier is not possible without
+  running The Eye on the same traffic. The overnight deployment bridges this
+  gap for the subset of traffic captured during that window.
+
+================================================================================
+AI AGENT DETECTION (Experimental)
+
+  Separate research module investigating whether LLM-driven SSH attacks
+  exhibit distinguishable behavioral patterns from human/scripted attacks.
+
+  Approach:
+    - Lab environment with Cowrie honeypot + 2 LLM attack scripts
+    - 24 behavioral features (timing, command diversity, error recovery,
+      exploration patterns)
+    - 3 architectures evaluated: CNN, LSTM, XGBoost
+    - Synthetic training data (lab-generated)
+
+  Status: Experimental. 9 documented limitations including:
+    - No real-world AI agent ground truth labels
+    - Synthetic data may not represent actual LLM attack patterns
+    - Small sample sizes in lab environment
+  See AI_DETECTION.md for full methodology and limitations.
+
+================================================================================
+RESPONSE ENGINE
+
+  Tiered automated response based on classification confidence:
+
+  OBSERVE (confidence < 0.6):
+    Log event, no action. Dashboard visibility only.
+
+  RECOMMEND (confidence 0.6–0.85):
+    Generate incident report, suggest response action.
+    Requires human approval via dashboard.
+
+  ACT (confidence > 0.85):
+    Automatic response execution per playbook:
+    - Firewall block (iptables/pfctl/NACL) with configurable TTL
+    - Rate limiting
+    - Connection reset
+    - Alert escalation
+
+  Safety guards:
+    - Whitelist protection (never block admin IPs)
+    - Maximum block duration limits
+    - Audit trail for all actions (approve/reject logged)
+    - Block expiry service with automatic cleanup
+
+================================================================================
+TECHNICAL STATS
+
+  Codebase:
+    ~190 source files across 7 components
+    4 languages: C++17, Java 21, Python 3.12, TypeScript
+    ~25 test files, 7 CI pipelines
+    5 Dockerfiles, 3 protobuf schemas, 5 Flyway migrations
+    3 Terraform modules, 3 Lambda functions
+
+  Infrastructure:
+    3 AWS EC2 t3.micro honeypots (us-east-1, eu-west-1, ap-southeast-1)
+    S3 bucket for log aggregation (versioned, private)
+    Docker Compose stack: PostgreSQL 16, Redis, Citadel, ML, Lens, Oracle
+
+  Performance:
+    Eye: 100K+ packets/sec throughput (lock-free ring buffer)
+    ML inference: sub-millisecond per flow (Unix domain socket)
+    LightGBM model: 602 KB (deployable on t3.micro with 1GB RAM)
+    Dashboard: real-time WebSocket with exponential backoff reconnect
+
+================================================================================
+KEY CONTRIBUTIONS
+
+  1. End-to-end pipeline from raw packets to automated response
+     (not just detection — full observe/recommend/act loop)
+
+  2. Real-world validation of lab-trained model
+     (CICIDS2017 → live honeypot traffic, no retraining needed)
+
+  3. Multi-region honeypot deployment with live ML classification
+     (3 continents, overnight capture, 1,787 flows classified)
+
+  4. Honest evaluation methodology
+     (macro F1 reported alongside accuracy; class imbalance acknowledged;
+      AI detection module explicitly marked experimental with 9 limitations)
+
+  5. Production-grade architecture
+     (gRPC + REST + WebSocket; JWT auth; firewall integration;
+      Docker/Terraform deployment; CI/CD pipelines)
+
+================================================================================
+FUTURE WORK
+
+  - Extended live capture (days/weeks) for larger validation dataset
+  - Full-feature model (31 Eye features) once sufficient Eye-processed data
+    collected
+  - TCP replay of Cowrie sessions through The Eye for direct cross-validation
+    of honeypot behavioral labels against flow-level classifications
+  - Elastic IPs for honeypots to avoid IP changes on instance restart
+  - Central ML service (TCP instead of Unix socket) for multi-Eye deployments
+  - Real-world AI agent detection ground truth collection
+
+================================================================================
+TOOLS & FRAMEWORKS
+
+  Capture:     libpcap, OpenSSL (JA3), protobuf, gRPC
+  ML:          scikit-learn, XGBoost, LightGBM, PyTorch, pandas, numpy
+  Backend:     Spring Boot 3.3, PostgreSQL 16, Redis, Flyway, Testcontainers
+  Frontend:    React 18, TypeScript, Three.js, Recharts, Tailwind CSS
+  Cloud:       AWS EC2, S3, VPC, IAM, Terraform, boto3, Lambda, SNS
+  Extension:   Chrome Manifest V3, Shadow DOM
+  Infra:       Docker, Docker Compose, GitHub Actions CI
+  Honeypot:    Cowrie 2.9.10, Ubuntu 24.04 LTS

@@ -1,0 +1,11 @@
+syntax = "proto3";
+package providence;
+
+message ResponseAction {
+    string event_id = 1;
+    string action_type = 2;    // OBSERVE, ALERT, BLOCK, RATE_LIMIT
+    string target_ip = 3;
+    int64 ttl_seconds = 4;
+    double confidence = 5;
+    string rationale = 6;
+}

