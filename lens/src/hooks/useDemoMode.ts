@@ -119,6 +119,18 @@ export function useDemoMode(navigate: (path: string) => void) {
   useEffect(() => {
     if (!active) return;
 
+    // If resuming from a remount (e.g. coming back from /login),
+    // advance past the current index so we don't re-navigate to
+    // the route that caused the unmount.
+    const wasResumed = localStorage.getItem(DEMO_INDEX_KEY) !== null;
+    if (wasResumed) {
+      const storedIdx = parseInt(localStorage.getItem(DEMO_INDEX_KEY) || '0', 10);
+      const routes = routesRef.current;
+      if (routes[storedIdx]?.path === '/login') {
+        indexRef.current = (storedIdx + 1) % routes.length;
+      }
+    }
+
     function goToNext() {
       const routes = routesRef.current;
       const route = routes[indexRef.current];
