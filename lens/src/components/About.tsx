@@ -30,6 +30,9 @@ export default function About() {
           <h1 className="text-2xl font-bold text-gray-100 tracking-wide">Graeme Huntley</h1>
           <p className="text-sm text-steel-200 tracking-wider">MS in Artificial Intelligence · Expected December 2026</p>
           <p className="text-xs text-gray-500 mt-1">Northeastern University · Seattle, WA</p>
+          <p className="text-xs text-providence-accent-bright mt-2 tracking-wide">
+            Open to internships, co-ops, and full-time roles in security engineering, ML infrastructure, and software development
+          </p>
         </div>
       </div>
 
@@ -148,8 +151,8 @@ export default function About() {
           </div>
           <div>
             <p className="text-gray-500 text-xs">GitHub</p>
-            <a href="https://github.com/NovusViduus" target="_blank" rel="noopener noreferrer"
-              className="text-providence-accent-bright hover:underline">NovusViduus</a>
+            <a href="https://github.com/NovusViduus/Providence" target="_blank" rel="noopener noreferrer"
+              className="text-providence-accent-bright hover:underline">NovusViduus/Providence</a>
           </div>
           <div>
             <p className="text-gray-500 text-xs">Location</p>
