@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import MascotViewer from './MascotViewer';
 import codexData from '../data/codex.json';
 
@@ -226,7 +227,19 @@ function EntryDetail({ entry, onBack }: { entry: CodexEntry; onBack: () => void 
 }
 
 export default function Codex() {
+  const [searchParams] = useSearchParams();
+  const entryParam = searchParams.get('entry');
   const [selected, setSelected] = useState<CodexEntry | null>(null);
+
+  // Auto-select entry from URL param (used by demo mode)
+  useEffect(() => {
+    if (entryParam) {
+      const match = entries.find(e => e.id === entryParam);
+      if (match) setSelected(match);
+    } else {
+      setSelected(null);
+    }
+  }, [entryParam]);
 
   const attacks = entries.filter((e) => e.category === 'attack');
   const network = entries.filter((e) => e.category === 'network');

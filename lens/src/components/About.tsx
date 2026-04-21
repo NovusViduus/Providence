@@ -137,10 +137,10 @@ export default function About() {
       {/* Contact */}
       <div className="bg-providence-surface border border-providence-border rounded-lg p-6">
         <h2 className="text-sm text-gray-400 uppercase tracking-wider mb-3">Contact</h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-gray-500 text-xs">Email</p>
-            <a href="mailto:huntley.g@northeastern.edu" className="text-gray-300 font-mono hover:text-providence-accent transition-colors">
+            <a href="mailto:huntley.g@northeastern.edu" className="text-gray-300 font-mono hover:text-providence-accent transition-colors break-all">
               huntley.g@northeastern.edu
             </a>
           </div>

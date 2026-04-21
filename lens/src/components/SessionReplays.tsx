@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import TerminalReplay from './TerminalReplay';
 import sessionsData from '../data/sessions.json';
 
@@ -11,8 +12,17 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function SessionReplays() {
+  const [searchParams] = useSearchParams();
+  const playParam = searchParams.get('play');
   const [activeId, setActiveId] = useState<string | null>(null);
   const sessions = sessionsData as any[];
+
+  // Auto-select session from URL param (used by demo mode)
+  useEffect(() => {
+    if (playParam && sessions.some(s => s.id === playParam)) {
+      setActiveId(playParam);
+    }
+  }, [playParam]);
 
   return (
     <div className="space-y-6">

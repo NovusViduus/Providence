@@ -5,7 +5,7 @@ import { useWebSocket } from '../hooks/useWebSocket';
 import { useIdleTimer } from '../hooks/useIdleTimer';
 import { getRole, isAdmin, logout } from '../services/auth';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { useDemoMode } from '../hooks/useDemoMode';
+import { useDemoMode, DEMO_SCREENSAVER_EVENT } from '../hooks/useDemoMode';
 import EyeOfProvidence from './EyeOfProvidence';
 import Screensaver from './Screensaver';
 import MusicPlayer from './MusicPlayer';
@@ -129,6 +129,17 @@ export default function Layout() {
 
   // Demo kiosk mode
   const demo = useDemoMode(navigate);
+
+  // Listen for demo mode screensaver control
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const show = (e as CustomEvent).detail?.show;
+      setForceScreensaver(show);
+      if (!show) setDismissed(true);
+    };
+    window.addEventListener(DEMO_SCREENSAVER_EVENT, handler);
+    return () => window.removeEventListener(DEMO_SCREENSAVER_EVENT, handler);
+  }, []);
 
   // Mobile sidebar
   const [mobileNav, setMobileNav] = useState(false);
