@@ -133,3 +133,22 @@ export function useDemoMode(navigate: (path: string) => void) {
         // Dismiss screensaver if it was showing
         window.dispatchEvent(new CustomEvent(DEMO_SCREENSAVER_EVENT, { detail: { show: false } }));
         navigateRef.current(route.path);
+      }
+
+      timerRef.current = setTimeout(() => {
+        const nextIndex = (indexRef.current + 1) % routes.length;
+        // Rebuild routes at the start of each cycle for fresh random picks
+        if (nextIndex === 0) {
+          routesRef.current = buildRoutes();
+        }
+        indexRef.current = nextIndex;
+        goToNext();
+      }, route.duration);
+    }
+
+    goToNext();
+    return () => clearTimeout(timerRef.current);
+  }, [active]);
+
+  return { active, start, stop };
+}
