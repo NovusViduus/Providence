@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../services/auth';
+import { login, getToken } from '../services/auth';
+import { isDemoActive } from '../hooks/useDemoMode';
 import EyeOfProvidence from './EyeOfProvidence';
 
 export default function Login() {
@@ -9,6 +10,17 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Demo mode: if we're already logged in and demo is active,
+  // just show the login screen briefly — the demo timer in Layout
+  // will navigate us away. But since Layout is unmounted here,
+  // we need our own timer to go back.
+  useEffect(() => {
+    if (isDemoActive() && getToken()) {
+      const timer = setTimeout(() => navigate('/'), 20_000);
+      return () => clearTimeout(timer);
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
