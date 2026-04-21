@@ -33,6 +33,9 @@ function buildRoutes(): { path: string; duration: number }[] {
   const randomIp = pick(dossierIps);
 
   return [
+    // ── Login screen (QR code visible for mobile users) ──
+    { path: '/login',                     duration: 20_000 },
+
     // ── Overview ──
     { path: '/',                          duration: 12_000 },
     { path: '/briefing',                  duration: 20_000 },
