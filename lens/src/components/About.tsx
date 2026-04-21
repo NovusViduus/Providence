@@ -31,7 +31,7 @@ export default function About() {
           <p className="text-sm text-steel-200 tracking-wider">MS in Artificial Intelligence · Expected December 2026</p>
           <p className="text-xs text-gray-500 mt-1">Northeastern University · Seattle, WA</p>
           <p className="text-xs text-providence-accent-bright mt-2 tracking-wide">
-            Open to internships, co-ops, and full-time roles in security engineering, ML infrastructure, and software development
+            Open to internships, co-ops, and full-time opportunities in software engineering, security, AI/ML, and cloud infrastructure
           </p>
         </div>
       </div>

@@ -103,14 +103,14 @@ export default function Login() {
       <div className="mt-8 flex flex-col items-center gap-2 animate-fade-in" style={{ animationDelay: '0.5s' }}>
         <div className="bg-white rounded-lg p-2">
           <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(window.location.origin)}&bgcolor=ffffff&color=0C1017&format=svg`}
+            src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(window.location.origin + '/me')}&bgcolor=ffffff&color=0C1017&format=svg`}
             alt="QR code to access Providence"
             width={120} height={120}
             className="rounded"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         </div>
-        <p className="text-[9px] text-gray-600 tracking-wider">SCAN TO OPEN ON MOBILE</p>
+        <p className="text-[9px] text-gray-600 tracking-wider">SCAN FOR ABOUT ME</p>
       </div>
 
       {/* Version */}

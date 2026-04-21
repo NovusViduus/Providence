@@ -23,6 +23,7 @@ import ReportGenerator from './components/ReportGenerator';
 import ModelMetrics from './components/ModelMetrics';
 import NewsFeed from './components/NewsFeed';
 import TechStack from './components/TechStack';
+import AboutPublic from './components/AboutPublic';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return getToken() ? <>{children}</> : <Navigate to="/login" />;
@@ -32,6 +33,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/me" element={<AboutPublic />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<ModelMetrics />} />
         <Route path="events" element={<AttackFeed />} />
